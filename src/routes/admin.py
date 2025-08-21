@@ -400,7 +400,7 @@ def category_management():
             'id': category.id,
             'name': category.name,
             'slug': category.slug,
-            'color': category.color,
+            'color': category.color_code,
             'description': category.description,
             'display_order': category.display_order,
             'image_count': image_count
@@ -417,7 +417,7 @@ def add_category():
     
     name = request.form.get('name')
     slug = request.form.get('slug') or generate_slug(name)
-    color = request.form.get('color', '#f57931')
+    color_code = request.form.get('color', '#f57931')
     description = request.form.get('description', '')
     
     # Get the highest display_order
@@ -427,7 +427,7 @@ def add_category():
     category = Category(
         name=name,
         slug=slug,
-        color=color,
+        color_code=color_code,
         description=description,
         display_order=max_order + 1
     )
@@ -452,7 +452,7 @@ def get_category(category_id):
             'id': category.id,
             'name': category.name,
             'slug': category.slug,
-            'color': category.color,
+            'color': category.color_code,
             'description': category.description,
             'display_order': category.display_order
         }
@@ -468,7 +468,7 @@ def edit_category(category_id):
     
     category.name = request.form.get('name')
     category.slug = request.form.get('slug') or generate_slug(request.form.get('name'))
-    category.color = request.form.get('color')
+    category.color_code = request.form.get('color')
     category.description = request.form.get('description', '')
     
     db.session.commit()
