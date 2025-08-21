@@ -535,24 +535,127 @@ def reorder_category():
     
     return jsonify({'success': True})
 
-# Featured Image Management placeholder routes
+# Featured Image Management routes
 @admin_bp.route('/featured')
 def featured_management():
     """Featured image management page"""
     if not is_admin_logged_in():
         return redirect(url_for('admin.admin_login'))
     
-    # This will be implemented in the featured image management module
-    return "Featured Image Management - Coming Soon"
+    # Get current date
+    today = datetime.now().date()
+    
+    # Get current featured image (active today)
+    current_featured = FeaturedImage.query.filter(
+        FeaturedImage.start_date <= today,
+        FeaturedImage.end_date >= today,
+        FeaturedImage.is_active == True
+    ).first()
+    
+    # Get scheduled featured images (start date in the future)
+    scheduled_featured = FeaturedImage.query.filter(
+        FeaturedImage.start_date > today,
+        FeaturedImage.is_active == True
+    ).order_by(FeaturedImage.start_date).all()
+    
+    # Get all images for selection
+    images = Image.query.filter_by(is_active=True).order_by(Image.date_uploaded.desc()).all()
+    
+    return render_template('admin/featured.html', 
+                          current_featured=current_featured,
+                          scheduled_featured=scheduled_featured,
+                          images=images)
 
-@admin_bp.route('/featured/set')
+@admin_bp.route('/featured/set', methods=['POST'])
 def set_featured():
-    """Set featured image page"""
+    """Set a featured image"""
     if not is_admin_logged_in():
         return redirect(url_for('admin.admin_login'))
     
-    # This will be implemented in the featured image management module
-    return "Set Featured Image - Coming Soon"
+    image_id = request.form.get('image_id')
+    title = request.form.get('title', '')
+    story = request.form.get('story', '')
+    start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+    end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+    
+    # Validate dates
+    if start_date > end_date:
+        flash('Start date cannot be after end date', 'error')
+        return redirect(url_for('admin.featured_management'))
+    
+    # Create new featured image
+    featured = FeaturedImage(
+        image_id=image_id,
+        title=title,
+        story=story,
+        start_date=start_date,
+        end_date=end_date,
+        is_active=True
+    )
+    
+    db.session.add(featured)
+    db.session.commit()
+    
+    flash('Featured image set successfully', 'success')
+    return redirect(url_for('admin.featured_management'))
+
+@admin_bp.route('/featured/<int:featured_id>')
+def get_featured(featured_id):
+    """Get featured image data as JSON"""
+    if not is_admin_logged_in():
+        return jsonify({'success': False, 'message': 'Not authorized'})
+    
+    featured = FeaturedImage.query.get_or_404(featured_id)
+    
+    return jsonify({
+        'success': True,
+        'featured': {
+            'id': featured.id,
+            'image_id': featured.image_id,
+            'title': featured.title,
+            'story': featured.story,
+            'start_date': featured.start_date.strftime('%Y-%m-%d'),
+            'end_date': featured.end_date.strftime('%Y-%m-%d'),
+            'is_active': featured.is_active
+        }
+    })
+
+@admin_bp.route('/featured/<int:featured_id>/edit', methods=['POST'])
+def edit_featured(featured_id):
+    """Edit a featured image"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    featured = FeaturedImage.query.get_or_404(featured_id)
+    
+    featured.title = request.form.get('title', '')
+    featured.story = request.form.get('story', '')
+    featured.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+    featured.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+    
+    # Validate dates
+    if featured.start_date > featured.end_date:
+        flash('Start date cannot be after end date', 'error')
+        return redirect(url_for('admin.featured_management'))
+    
+    db.session.commit()
+    
+    flash('Featured image updated successfully', 'success')
+    return redirect(url_for('admin.featured_management'))
+
+@admin_bp.route('/featured/<int:featured_id>/delete', methods=['POST'])
+def delete_featured(featured_id):
+    """Delete a featured image"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    featured = FeaturedImage.query.get_or_404(featured_id)
+    
+    db.session.delete(featured)
+    db.session.commit()
+    
+    flash('Featured image removed successfully', 'success')
+    return redirect(url_for('admin.featured_management'))
 
 # Background Management placeholder route
 @admin_bp.route('/backgrounds')
