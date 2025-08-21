@@ -16,16 +16,18 @@ def simple_upload():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Simple Upload Test</title>
+        <title>Simple Upload Test - REBUILD v2</title>
         <style>
             body { background: #2c3e50; color: white; font-family: Arial; padding: 20px; }
             form { max-width: 400px; margin: 0 auto; }
             input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; }
             button { background: #f57931; color: white; border: none; cursor: pointer; }
+            .version { color: #f57931; font-weight: bold; }
         </style>
     </head>
     <body>
         <h1>Simple Upload Test</h1>
+        <p class="version">VERSION: REBUILD v2 - NO REQUIRED ATTRIBUTE</p>
         <form method="POST" enctype="multipart/form-data">
             <input type="file" name="test_file">
             <input type="text" name="test_text" placeholder="Test text">
