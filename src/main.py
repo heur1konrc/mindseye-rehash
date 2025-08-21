@@ -130,7 +130,7 @@ def admin_upload():
                         title=f"{title_prefix} {i+1}",
                         filename=filename,
                         description=description,
-                        upload_date=datetime.now()
+                        date_uploaded=datetime.now()
                     )
                     db.session.add(image)
                     uploaded_count += 1
