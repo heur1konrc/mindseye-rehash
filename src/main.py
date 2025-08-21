@@ -6,6 +6,7 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+# Force rebuild - admin system debugging
 
 # Add the current directory to the path so we can import modules
 current_dir = os.path.dirname(os.path.abspath(__file__))
