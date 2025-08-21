@@ -21,8 +21,8 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Use persistent volume for database in production
 if os.environ.get('RAILWAY_ENVIRONMENT') == 'production':
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////data/mindseye.db'
-    logger.info("Using persistent volume database at /data/mindseye.db")
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////mnt/data/mindseye.db'
+    logger.info("Using persistent volume database at /mnt/data/mindseye.db")
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////home/ubuntu/mindseye-rehash/src/database/mindseye.db'
     logger.info(f"Using local database at {app.config['SQLALCHEMY_DATABASE_URI']}")
@@ -31,8 +31,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Ensure database directory exists
 if os.environ.get('RAILWAY_ENVIRONMENT') == 'production':
-    os.makedirs('/data', exist_ok=True)
-    logger.info("Ensured /data directory exists for persistent volume")
+    os.makedirs('/mnt/data', exist_ok=True)
+    logger.info("Ensured /mnt/data directory exists for persistent volume")
 else:
     os.makedirs(os.path.join(os.path.dirname(__file__), 'database'), exist_ok=True)
     logger.info("Ensured local database directory exists")
