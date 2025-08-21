@@ -1,11 +1,19 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 import os
+import sys
 import json
 import uuid
 from datetime import datetime
 from werkzeug.utils import secure_filename
-from src.models import db, Image, Category, ImageCategory, FeaturedImage, BackgroundSetting, ContactMessage, Backup, Setting
-from src.utils import save_uploaded_image, extract_exif_data, format_shutter_speed, generate_slug, create_backup, restore_backup
+
+# Add the parent directory to the path so we can import modules
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
+from models import db, Image, Category, ImageCategory, FeaturedImage, BackgroundSetting, ContactMessage, Backup, Setting
+from utils import save_uploaded_image, extract_exif_data, format_shutter_speed, generate_slug, create_backup, restore_backup
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates/admin')
 
@@ -15,6 +23,27 @@ ADMIN_PASSWORD = 'mindseye2025'
 # Helper function to check if admin is logged in
 def is_admin_logged_in():
     return session.get('admin_logged_in', False)
+
+# Helper function to check if file extension is allowed
+def allowed_file(filename):
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Helper function to get database size
+def get_db_size():
+    try:
+        db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'mindseye.db')
+        if os.path.exists(db_path):
+            size_bytes = os.path.getsize(db_path)
+            if size_bytes < 1024:
+                return f"{size_bytes} bytes"
+            elif size_bytes < 1024 * 1024:
+                return f"{size_bytes / 1024:.1f} KB"
+            else:
+                return f"{size_bytes / (1024 * 1024):.1f} MB"
+        return "0 bytes"
+    except:
+        return "Unknown"
 
 # Login route
 @admin_bp.route('/')
@@ -50,7 +79,7 @@ def admin_logout():
     """Admin logout"""
     session.pop('admin_logged_in', None)
     # Redirect to home page instead of login page
-    return redirect(url_for('index'))
+    return redirect(url_for('frontend.index'))
 
 # Dashboard route
 @admin_bp.route('/dashboard')
@@ -442,20 +471,16 @@ def add_category():
 def get_category(category_id):
     """Get category data as JSON"""
     if not is_admin_logged_in():
-        return jsonify({'success': False, 'message': 'Not authorized'})
+        return jsonify({'error': 'Unauthorized'}), 401
     
     category = Category.query.get_or_404(category_id)
     
     return jsonify({
-        'success': True,
-        'category': {
-            'id': category.id,
-            'name': category.name,
-            'slug': category.slug,
-            'color': category.color_code,
-            'description': category.description,
-            'display_order': category.display_order
-        }
+        'id': category.id,
+        'name': category.name,
+        'slug': category.slug,
+        'color_code': category.color_code,
+        'description': category.description
     })
 
 @admin_bp.route('/categories/<int:category_id>/edit', methods=['POST'])
@@ -467,8 +492,8 @@ def edit_category(category_id):
     category = Category.query.get_or_404(category_id)
     
     category.name = request.form.get('name')
-    category.slug = request.form.get('slug') or generate_slug(request.form.get('name'))
-    category.color_code = request.form.get('color')
+    category.slug = request.form.get('slug') or generate_slug(category.name)
+    category.color_code = request.form.get('color', '#f57931')
     category.description = request.form.get('description', '')
     
     db.session.commit()
@@ -484,10 +509,12 @@ def delete_category(category_id):
     
     category = Category.query.get_or_404(category_id)
     
-    # Delete all image-category relationships
-    ImageCategory.query.filter_by(category_id=category.id).delete()
+    # Check if category has images
+    image_count = ImageCategory.query.filter_by(category_id=category.id).count()
+    if image_count > 0:
+        flash(f'Cannot delete category "{category.name}" because it has {image_count} images', 'danger')
+        return redirect(url_for('admin.category_management'))
     
-    # Delete the category
     db.session.delete(category)
     db.session.commit()
     
@@ -495,96 +522,72 @@ def delete_category(category_id):
     return redirect(url_for('admin.category_management'))
 
 @admin_bp.route('/categories/reorder', methods=['POST'])
-def reorder_category():
+def reorder_categories():
     """Reorder categories"""
     if not is_admin_logged_in():
-        return jsonify({'success': False, 'message': 'Not authorized'})
+        return jsonify({'error': 'Unauthorized'}), 401
     
     data = request.json
-    category_id = data.get('category_id')
-    new_position = data.get('new_position')
+    category_ids = data.get('category_ids', [])
     
-    if not category_id or new_position is None:
-        return jsonify({'success': False, 'message': 'Missing required parameters'})
+    if not category_ids:
+        return jsonify({'error': 'No categories provided'}), 400
     
-    try:
-        category_id = int(category_id)
-        new_position = int(new_position)
-    except ValueError:
-        return jsonify({'success': False, 'message': 'Invalid parameters'})
-    
-    # Get the category to move
-    category = Category.query.get(category_id)
-    if not category:
-        return jsonify({'success': False, 'message': 'Category not found'})
-    
-    # Get all categories ordered by display_order
-    categories = Category.query.order_by(Category.display_order).all()
-    
-    # Remove the category from the list
-    categories.remove(category)
-    
-    # Insert the category at the new position
-    categories.insert(new_position, category)
-    
-    # Update display_order for all categories
-    for i, cat in enumerate(categories):
-        cat.display_order = i + 1
+    # Update display_order for each category
+    for i, category_id in enumerate(category_ids):
+        category = Category.query.get(category_id)
+        if category:
+            category.display_order = i
     
     db.session.commit()
     
     return jsonify({'success': True})
 
-# Featured Image Management routes
+# Featured Image routes
 @admin_bp.route('/featured')
 def featured_management():
     """Featured image management page"""
     if not is_admin_logged_in():
         return redirect(url_for('admin.admin_login'))
     
-    # Get current date
-    today = datetime.now().date()
-    
-    # Get current featured image (active today)
-    current_featured = FeaturedImage.query.filter(
-        FeaturedImage.start_date <= today,
-        FeaturedImage.end_date >= today,
-        FeaturedImage.is_active == True
-    ).first()
-    
-    # Get scheduled featured images (start date in the future)
-    scheduled_featured = FeaturedImage.query.filter(
-        FeaturedImage.start_date > today,
-        FeaturedImage.is_active == True
-    ).order_by(FeaturedImage.start_date).all()
+    # Get all featured images
+    featured_images = FeaturedImage.query.order_by(FeaturedImage.start_date.desc()).all()
     
     # Get all images for selection
-    images = Image.query.filter_by(is_active=True).order_by(Image.date_uploaded.desc()).all()
+    images = Image.query.order_by(Image.created_at.desc()).all()
     
-    return render_template('admin/featured.html', 
-                          current_featured=current_featured,
-                          scheduled_featured=scheduled_featured,
+    return render_template('featured.html', 
+                          featured_images=featured_images,
                           images=images)
 
-@admin_bp.route('/featured/set', methods=['POST'])
-def set_featured():
-    """Set a featured image"""
+@admin_bp.route('/featured/add', methods=['POST'])
+def add_featured_image():
+    """Add a new featured image"""
     if not is_admin_logged_in():
         return redirect(url_for('admin.admin_login'))
     
     image_id = request.form.get('image_id')
-    title = request.form.get('title', '')
-    story = request.form.get('story', '')
-    start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
-    end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+    title = request.form.get('title')
+    story = request.form.get('story')
+    start_date = request.form.get('start_date')
+    end_date = request.form.get('end_date')
     
-    # Validate dates
-    if start_date > end_date:
-        flash('Start date cannot be after end date', 'error')
+    # Convert dates
+    try:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    except:
+        flash('Invalid date format', 'danger')
         return redirect(url_for('admin.featured_management'))
     
-    # Create new featured image
-    featured = FeaturedImage(
+    # Check if image exists
+    image = Image.query.get(image_id)
+    if not image:
+        flash('Image not found', 'danger')
+        return redirect(url_for('admin.featured_management'))
+    
+    # Create featured image
+    featured_image = FeaturedImage(
         image_id=image_id,
         title=title,
         story=story,
@@ -593,49 +596,31 @@ def set_featured():
         is_active=True
     )
     
-    db.session.add(featured)
+    db.session.add(featured_image)
     db.session.commit()
     
-    flash('Featured image set successfully', 'success')
+    flash('Featured image added successfully', 'success')
     return redirect(url_for('admin.featured_management'))
 
-@admin_bp.route('/featured/<int:featured_id>')
-def get_featured(featured_id):
-    """Get featured image data as JSON"""
-    if not is_admin_logged_in():
-        return jsonify({'success': False, 'message': 'Not authorized'})
-    
-    featured = FeaturedImage.query.get_or_404(featured_id)
-    
-    return jsonify({
-        'success': True,
-        'featured': {
-            'id': featured.id,
-            'image_id': featured.image_id,
-            'title': featured.title,
-            'story': featured.story,
-            'start_date': featured.start_date.strftime('%Y-%m-%d'),
-            'end_date': featured.end_date.strftime('%Y-%m-%d'),
-            'is_active': featured.is_active
-        }
-    })
-
 @admin_bp.route('/featured/<int:featured_id>/edit', methods=['POST'])
-def edit_featured(featured_id):
+def edit_featured_image(featured_id):
     """Edit a featured image"""
     if not is_admin_logged_in():
         return redirect(url_for('admin.admin_login'))
     
-    featured = FeaturedImage.query.get_or_404(featured_id)
+    featured_image = FeaturedImage.query.get_or_404(featured_id)
     
-    featured.title = request.form.get('title', '')
-    featured.story = request.form.get('story', '')
-    featured.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
-    featured.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+    featured_image.title = request.form.get('title')
+    featured_image.story = request.form.get('story')
     
-    # Validate dates
-    if featured.start_date > featured.end_date:
-        flash('Start date cannot be after end date', 'error')
+    # Convert dates
+    try:
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        featured_image.start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        featured_image.end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    except:
+        flash('Invalid date format', 'danger')
         return redirect(url_for('admin.featured_management'))
     
     db.session.commit()
@@ -644,87 +629,32 @@ def edit_featured(featured_id):
     return redirect(url_for('admin.featured_management'))
 
 @admin_bp.route('/featured/<int:featured_id>/delete', methods=['POST'])
-def delete_featured(featured_id):
+def delete_featured_image(featured_id):
     """Delete a featured image"""
     if not is_admin_logged_in():
         return redirect(url_for('admin.admin_login'))
     
-    featured = FeaturedImage.query.get_or_404(featured_id)
+    featured_image = FeaturedImage.query.get_or_404(featured_id)
     
-    db.session.delete(featured)
+    db.session.delete(featured_image)
     db.session.commit()
     
-    flash('Featured image removed successfully', 'success')
+    flash('Featured image deleted successfully', 'success')
     return redirect(url_for('admin.featured_management'))
 
-# Background Management placeholder route
-@admin_bp.route('/backgrounds')
-def background_management():
-    """Background management page"""
+@admin_bp.route('/featured/<int:featured_id>/toggle', methods=['POST'])
+def toggle_featured_image(featured_id):
+    """Toggle a featured image active/inactive"""
     if not is_admin_logged_in():
         return redirect(url_for('admin.admin_login'))
     
-    # This will be implemented in the background management module
-    return "Background Management - Coming Soon"
-
-# Contact Management placeholder route
-@admin_bp.route('/messages')
-def contact_management():
-    """Contact message management page"""
-    if not is_admin_logged_in():
-        return redirect(url_for('admin.admin_login'))
+    featured_image = FeaturedImage.query.get_or_404(featured_id)
     
-    # This will be implemented in the contact management module
-    return "Contact Message Management - Coming Soon"
-
-# Backup Management placeholder routes
-@admin_bp.route('/backups')
-def backup_management():
-    """Backup management page"""
-    if not is_admin_logged_in():
-        return redirect(url_for('admin.admin_login'))
+    featured_image.is_active = not featured_image.is_active
     
-    # This will be implemented in the backup management module
-    return "Backup Management - Coming Soon"
-
-@admin_bp.route('/backups/create')
-def create_backup():
-    """Create backup page"""
-    if not is_admin_logged_in():
-        return redirect(url_for('admin.admin_login'))
+    db.session.commit()
     
-    # This will be implemented in the backup management module
-    return "Create Backup - Coming Soon"
-
-# Settings placeholder route
-@admin_bp.route('/settings')
-def settings():
-    """Settings page"""
-    if not is_admin_logged_in():
-        return redirect(url_for('admin.admin_login'))
-    
-    # This will be implemented in the settings module
-    return "Settings - Coming Soon"
-
-# Helper functions
-def allowed_file(filename):
-    """Check if file extension is allowed"""
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def get_db_size():
-    """Get database size in human-readable format"""
-    try:
-        db_path = 'src/database/mindseye.db'
-        size_bytes = os.path.getsize(db_path)
-        
-        # Convert to human-readable format
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if size_bytes < 1024.0:
-                return f"{size_bytes:.1f} {unit}"
-            size_bytes /= 1024.0
-        
-        return f"{size_bytes:.1f} TB"
-    except:
-        return "Unknown"
+    status = 'activated' if featured_image.is_active else 'deactivated'
+    flash(f'Featured image {status} successfully', 'success')
+    return redirect(url_for('admin.featured_management'))
 

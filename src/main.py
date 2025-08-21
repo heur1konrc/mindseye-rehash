@@ -1,6 +1,14 @@
 from flask import Flask, render_template, send_from_directory, request, redirect, url_for, jsonify
 import os
-from src.models import db, init_db, import_legacy_data
+import sys
+
+# Add the current directory to the path so we can import modules
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
+
+# Now we can import our modules
+from models import db, init_db, import_legacy_data
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = 'mindseye2025'
@@ -24,8 +32,8 @@ init_db(app)
 import_legacy_data('static/portfolio.json')
 
 # Import routes
-from src.routes.admin import admin_bp
-from src.routes.frontend import frontend_bp
+from routes.admin import admin_bp
+from routes.frontend import frontend_bp
 
 # Register blueprints
 app.register_blueprint(admin_bp, url_prefix='/admin')
