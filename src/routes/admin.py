@@ -4,8 +4,8 @@ import json
 import uuid
 from datetime import datetime
 from werkzeug.utils import secure_filename
-from models import db, Image, Category, ImageCategory, FeaturedImage, BackgroundSetting, ContactMessage, Backup, Setting
-from utils import save_uploaded_image, extract_exif_data, format_shutter_speed, generate_slug, create_backup, restore_backup
+from src.models import db, Image, Category, ImageCategory, FeaturedImage, BackgroundSetting, ContactMessage, Backup, Setting
+from src.utils import save_uploaded_image, extract_exif_data, format_shutter_speed, generate_slug, create_backup, restore_backup
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates/admin')
 
@@ -385,24 +385,155 @@ def bulk_image_action():
     
     return redirect(url_for('admin.image_management'))
 
-# Category Management placeholder routes
+# Category Management routes
 @admin_bp.route('/categories')
 def category_management():
     """Category management page"""
     if not is_admin_logged_in():
         return redirect(url_for('admin.admin_login'))
     
-    # This will be implemented in the category management module
-    return "Category Management - Coming Soon"
+    # Get all categories with image count
+    categories = []
+    for category in Category.query.order_by(Category.display_order).all():
+        image_count = ImageCategory.query.filter_by(category_id=category.id).count()
+        category_data = {
+            'id': category.id,
+            'name': category.name,
+            'slug': category.slug,
+            'color': category.color,
+            'description': category.description,
+            'display_order': category.display_order,
+            'image_count': image_count
+        }
+        categories.append(category_data)
+    
+    return render_template('categories.html', categories=categories)
 
-@admin_bp.route('/categories/add')
+@admin_bp.route('/categories/add', methods=['POST'])
 def add_category():
-    """Add category page"""
+    """Add a new category"""
     if not is_admin_logged_in():
         return redirect(url_for('admin.admin_login'))
     
-    # This will be implemented in the category management module
-    return "Add Category - Coming Soon"
+    name = request.form.get('name')
+    slug = request.form.get('slug') or generate_slug(name)
+    color = request.form.get('color', '#f57931')
+    description = request.form.get('description', '')
+    
+    # Get the highest display_order
+    max_order = db.session.query(db.func.max(Category.display_order)).scalar() or 0
+    
+    # Create new category
+    category = Category(
+        name=name,
+        slug=slug,
+        color=color,
+        description=description,
+        display_order=max_order + 1
+    )
+    
+    db.session.add(category)
+    db.session.commit()
+    
+    flash(f'Category "{name}" added successfully', 'success')
+    return redirect(url_for('admin.category_management'))
+
+@admin_bp.route('/categories/<int:category_id>')
+def get_category(category_id):
+    """Get category data as JSON"""
+    if not is_admin_logged_in():
+        return jsonify({'success': False, 'message': 'Not authorized'})
+    
+    category = Category.query.get_or_404(category_id)
+    
+    return jsonify({
+        'success': True,
+        'category': {
+            'id': category.id,
+            'name': category.name,
+            'slug': category.slug,
+            'color': category.color,
+            'description': category.description,
+            'display_order': category.display_order
+        }
+    })
+
+@admin_bp.route('/categories/<int:category_id>/edit', methods=['POST'])
+def edit_category(category_id):
+    """Edit a category"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    category = Category.query.get_or_404(category_id)
+    
+    category.name = request.form.get('name')
+    category.slug = request.form.get('slug') or generate_slug(request.form.get('name'))
+    category.color = request.form.get('color')
+    category.description = request.form.get('description', '')
+    
+    db.session.commit()
+    
+    flash(f'Category "{category.name}" updated successfully', 'success')
+    return redirect(url_for('admin.category_management'))
+
+@admin_bp.route('/categories/<int:category_id>/delete', methods=['POST'])
+def delete_category(category_id):
+    """Delete a category"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    category = Category.query.get_or_404(category_id)
+    
+    # Delete all image-category relationships
+    ImageCategory.query.filter_by(category_id=category.id).delete()
+    
+    # Delete the category
+    db.session.delete(category)
+    db.session.commit()
+    
+    flash(f'Category "{category.name}" deleted successfully', 'success')
+    return redirect(url_for('admin.category_management'))
+
+@admin_bp.route('/categories/reorder', methods=['POST'])
+def reorder_category():
+    """Reorder categories"""
+    if not is_admin_logged_in():
+        return jsonify({'success': False, 'message': 'Not authorized'})
+    
+    data = request.json
+    category_id = data.get('category_id')
+    new_position = data.get('new_position')
+    
+    if not category_id or new_position is None:
+        return jsonify({'success': False, 'message': 'Missing required parameters'})
+    
+    try:
+        category_id = int(category_id)
+        new_position = int(new_position)
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Invalid parameters'})
+    
+    # Get the category to move
+    category = Category.query.get(category_id)
+    if not category:
+        return jsonify({'success': False, 'message': 'Category not found'})
+    
+    # Get all categories ordered by display_order
+    categories = Category.query.order_by(Category.display_order).all()
+    
+    # Remove the category from the list
+    categories.remove(category)
+    
+    # Insert the category at the new position
+    categories.insert(new_position, category)
+    
+    # Update display_order for all categories
+    for i, cat in enumerate(categories):
+        cat.display_order = i + 1
+    
+    db.session.commit()
+    
+    return jsonify({'success': True})
 
 # Featured Image Management placeholder routes
 @admin_bp.route('/featured')

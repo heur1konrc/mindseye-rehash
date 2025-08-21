@@ -1,0 +1,369 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Category Management - Mind's Eye Photography Admin{% endblock %}
+
+{% block header %}Category Management{% endblock %}
+
+{% block head %}
+<style>
+    .category-list {
+        margin-top: 20px;
+    }
+    
+    .category-item {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        transition: background-color 0.2s;
+    }
+    
+    .category-item:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    .category-color {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        margin-right: 15px;
+    }
+    
+    .category-name {
+        flex-grow: 1;
+        font-weight: 500;
+    }
+    
+    .category-count {
+        margin: 0 15px;
+        color: rgba(255, 255, 255, 0.6);
+    }
+    
+    .category-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .category-actions button {
+        background: none;
+        border: none;
+        color: var(--text-color);
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    
+    .category-actions button:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .category-actions button.edit-btn:hover {
+        color: var(--primary-color);
+    }
+    
+    .category-actions button.delete-btn:hover {
+        color: var(--danger-color);
+    }
+    
+    .category-actions button.move-btn:hover {
+        color: var(--info-color);
+    }
+    
+    .sortable-ghost {
+        opacity: 0.5;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .color-picker-container {
+        position: relative;
+    }
+    
+    .color-picker-preview {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-20">
+    <div class="card-header">
+        <h2>Add New Category</h2>
+    </div>
+    
+    <form id="addCategoryForm" action="{{ url_for('admin.add_category') }}" method="POST">
+        <div class="grid">
+            <div class="form-group">
+                <label for="name">Category Name</label>
+                <input type="text" id="name" name="name" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="slug">Slug (URL-friendly name)</label>
+                <input type="text" id="slug" name="slug" class="form-control">
+                <small>Leave blank to generate automatically</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="color">Color</label>
+                <div class="color-picker-container">
+                    <input type="color" id="color" name="color" value="#f57931" style="opacity: 0; position: absolute; z-index: -1;">
+                    <div class="color-picker-preview" id="colorPreview" style="background-color: #f57931;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" class="form-control" rows="2"></textarea>
+        </div>
+        
+        <div class="text-right">
+            <button type="submit" class="btn">Add Category</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Categories</h2>
+        <small>Drag to reorder categories</small>
+    </div>
+    
+    <div id="categoryList" class="category-list">
+        {% for category in categories %}
+            <div class="category-item" data-id="{{ category.id }}">
+                <div class="category-color" style="background-color: {{ category.color }};"></div>
+                <div class="category-name">{{ category.name }}</div>
+                <div class="category-count">{{ category.image_count }} images</div>
+                <div class="category-actions">
+                    <button type="button" class="move-btn" title="Drag to reorder">
+                        <i class="fas fa-grip-lines"></i>
+                    </button>
+                    <button type="button" class="edit-btn" title="Edit" onclick="editCategory({{ category.id }})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="delete-btn" title="Delete" onclick="confirmDelete({{ category.id }}, '{{ category.name }}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>No categories found. Add your first category above.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div id="editModal" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Edit Category</h3>
+            <button type="button" class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editCategoryForm" action="" method="POST">
+                <div class="form-group">
+                    <label for="edit_name">Category Name</label>
+                    <input type="text" id="edit_name" name="name" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_slug">Slug (URL-friendly name)</label>
+                    <input type="text" id="edit_slug" name="slug" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_color">Color</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="edit_color" name="color" style="opacity: 0; position: absolute; z-index: -1;">
+                        <div class="color-picker-preview" id="editColorPreview"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_description">Description</label>
+                    <textarea id="edit_description" name="description" class="form-control" rows="2"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn" style="background-color: var(--secondary-bg);" onclick="closeEditModal()">Cancel</button>
+            <button type="button" class="btn" onclick="submitEditForm()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Confirm Delete</h3>
+            <button type="button" class="modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete the category "<span id="deleteCategoryName"></span>"?</p>
+            <p>This will not delete the images in this category, but they will no longer be associated with this category.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn" style="background-color: var(--secondary-bg);" onclick="closeDeleteModal()">Cancel</button>
+            <form id="deleteForm" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Sortable
+        const categoryList = document.getElementById('categoryList');
+        if (categoryList) {
+            new Sortable(categoryList, {
+                animation: 150,
+                handle: '.move-btn',
+                ghostClass: 'sortable-ghost',
+                onEnd: function(evt) {
+                    const categoryId = evt.item.dataset.id;
+                    const newIndex = evt.newIndex;
+                    
+                    // Send the new order to the server
+                    fetch('{{ url_for("admin.reorder_category") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            category_id: categoryId,
+                            new_position: newIndex
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Success notification could be added here
+                        } else {
+                            alert('Error reordering categories: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while reordering categories.');
+                    });
+                }
+            });
+        }
+        
+        // Auto-generate slug from name
+        const nameInput = document.getElementById('name');
+        const slugInput = document.getElementById('slug');
+        
+        if (nameInput && slugInput) {
+            nameInput.addEventListener('input', function() {
+                slugInput.value = generateSlug(this.value);
+            });
+        }
+        
+        // Color picker preview
+        const colorInput = document.getElementById('color');
+        const colorPreview = document.getElementById('colorPreview');
+        
+        if (colorInput && colorPreview) {
+            colorPreview.addEventListener('click', function() {
+                colorInput.click();
+            });
+            
+            colorInput.addEventListener('input', function() {
+                colorPreview.style.backgroundColor = this.value;
+            });
+        }
+        
+        // Edit color picker preview
+        const editColorInput = document.getElementById('edit_color');
+        const editColorPreview = document.getElementById('editColorPreview');
+        
+        if (editColorInput && editColorPreview) {
+            editColorPreview.addEventListener('click', function() {
+                editColorInput.click();
+            });
+            
+            editColorInput.addEventListener('input', function() {
+                editColorPreview.style.backgroundColor = this.value;
+            });
+        }
+    });
+    
+    // Generate slug from text
+    function generateSlug(text) {
+        return text.toString().toLowerCase()
+            .replace(/\s+/g, '-')           // Replace spaces with -
+            .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+            .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+            .replace(/^-+/, '')             // Trim - from start of text
+            .replace(/-+$/, '');            // Trim - from end of text
+    }
+    
+    // Edit category
+    function editCategory(categoryId) {
+        // Fetch category data
+        fetch(`{{ url_for('admin.get_category', category_id=0) }}`.replace('0', categoryId))
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const category = data.category;
+                    
+                    // Set form action
+                    document.getElementById('editCategoryForm').action = `{{ url_for('admin.edit_category', category_id=0) }}`.replace('0', categoryId);
+                    
+                    // Fill form fields
+                    document.getElementById('edit_name').value = category.name;
+                    document.getElementById('edit_slug').value = category.slug;
+                    document.getElementById('edit_color').value = category.color;
+                    document.getElementById('editColorPreview').style.backgroundColor = category.color;
+                    document.getElementById('edit_description').value = category.description;
+                    
+                    // Show modal
+                    document.getElementById('editModal').style.display = 'flex';
+                } else {
+                    alert('Error fetching category: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while fetching category data.');
+            });
+    }
+    
+    // Close edit modal
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+    
+    // Submit edit form
+    function submitEditForm() {
+        document.getElementById('editCategoryForm').submit();
+    }
+    
+    // Delete confirmation
+    function confirmDelete(categoryId, categoryName) {
+        document.getElementById('deleteCategoryName').textContent = categoryName;
+        document.getElementById('deleteForm').action = `{{ url_for('admin.delete_category', category_id=0) }}`.replace('0', categoryId);
+        document.getElementById('deleteModal').style.display = 'flex';
+    }
+    
+    // Close delete modal
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = 'none';
+    }
+</script>
+{% endblock %}
+
