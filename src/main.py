@@ -70,6 +70,30 @@ def page_not_found(e):
 def server_error(e):
     return render_template('error.html', error_code=500, error_message="Server error"), 500
 
+# Direct Flask POST test (not in blueprint)
+@app.route('/direct-test', methods=['GET', 'POST'])
+def direct_test():
+    if request.method == 'POST':
+        return """
+        <h1 style="color: green;">🎉 DIRECT FLASK POST WORKS! 🎉</h1>
+        <p>Form data: {}</p>
+        <p><a href="/direct-test">Test Again</a></p>
+        """.format(dict(request.form))
+    
+    return """
+    <html>
+    <body style="background: #2c3e50; color: white; font-family: Arial; padding: 20px;">
+        <h1>Direct Flask POST Test</h1>
+        <p>This route is directly on the Flask app, not in a blueprint</p>
+        <form method="POST">
+            <input type="text" name="test_input" placeholder="Enter test text" style="padding: 10px; margin: 10px 0; display: block;">
+            <button type="submit" style="padding: 10px 20px; background: #f57931; color: white; border: none;">Test Direct POST</button>
+        </form>
+        <p><a href="/admin/dashboard" style="color: #f57931;">Back to Dashboard</a></p>
+    </body>
+    </html>
+    """
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
 
