@@ -94,6 +94,91 @@ def direct_test():
     </html>
     """
 
+# Working admin upload route (direct Flask, not blueprint)
+@app.route('/admin-upload', methods=['GET', 'POST'])
+def admin_upload():
+    if request.method == 'POST':
+        try:
+            # Get form data
+            title_prefix = request.form.get('title_prefix', 'Image')
+            description = request.form.get('description', '')
+            
+            # Get uploaded files
+            files = request.files.getlist('images[]')
+            if not files or files[0].filename == '':
+                return """
+                <h1 style="color: red;">❌ No files selected</h1>
+                <p><a href="/admin-upload">Try Again</a></p>
+                """
+            
+            uploaded_count = 0
+            for i, file in enumerate(files):
+                if file and file.filename:
+                    # Generate unique filename
+                    filename = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
+                    
+                    # Save file
+                    upload_path = os.path.join(app.static_folder, 'assets', filename)
+                    os.makedirs(os.path.dirname(upload_path), exist_ok=True)
+                    file.save(upload_path)
+                    
+                    # Create database record
+                    image = Image(
+                        title=f"{title_prefix} {i+1}",
+                        filename=filename,
+                        description=description,
+                        upload_date=datetime.now()
+                    )
+                    db.session.add(image)
+                    uploaded_count += 1
+            
+            db.session.commit()
+            
+            return f"""
+            <h1 style="color: green;">🎉 SUCCESS! Uploaded {uploaded_count} images! 🎉</h1>
+            <p><a href="/admin-upload">Upload More</a></p>
+            <p><a href="/admin/dashboard">Back to Dashboard</a></p>
+            """
+            
+        except Exception as e:
+            return f"""
+            <h1 style="color: red;">❌ Upload Error</h1>
+            <p>Error: {str(e)}</p>
+            <p><a href="/admin-upload">Try Again</a></p>
+            """
+    
+    return """
+    <html>
+    <head>
+        <title>Admin Upload - WORKING VERSION</title>
+        <style>
+            body { background: #2c3e50; color: white; font-family: Arial; padding: 20px; }
+            form { max-width: 500px; margin: 0 auto; }
+            input, textarea, button { display: block; width: 100%; margin: 10px 0; padding: 10px; box-sizing: border-box; }
+            button { background: #f57931; color: white; border: none; cursor: pointer; font-size: 16px; }
+            .success { color: #f57931; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <h1>📸 Admin Upload - WORKING VERSION</h1>
+        <p class="success">This upload route works because it's direct Flask, not blueprint!</p>
+        <form method="POST" enctype="multipart/form-data">
+            <label>Select Images:</label>
+            <input type="file" name="images[]" multiple accept="image/*" required>
+            
+            <label>Title Prefix:</label>
+            <input type="text" name="title_prefix" placeholder="e.g., Sunset, Wildlife" value="Photo">
+            
+            <label>Description:</label>
+            <textarea name="description" rows="3" placeholder="Describe the images"></textarea>
+            
+            <button type="submit">📤 Upload Images</button>
+        </form>
+        <p><a href="/admin/dashboard" style="color: #f57931;">← Back to Dashboard</a></p>
+    </body>
+    </html>
+    """
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
 
