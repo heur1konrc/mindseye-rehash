@@ -256,7 +256,7 @@ def upload_image():
     # Get all categories for the form
     categories = Category.query.order_by(Category.display_order).all()
     
-    return render_template('upload.html', categories=categories)
+    return render_template('admin/upload.html', categories=categories)
 
 @admin_bp.route('/images/<int:image_id>/edit', methods=['GET', 'POST'])
 def edit_image(image_id):
