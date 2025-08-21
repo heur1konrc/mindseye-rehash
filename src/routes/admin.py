@@ -1,208 +1,496 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session, flash, send_from_directory
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 import os
 import json
-import sqlite3
-from werkzeug.utils import secure_filename
 import uuid
 from datetime import datetime
+from werkzeug.utils import secure_filename
+from models import db, Image, Category, ImageCategory, FeaturedImage, BackgroundSetting, ContactMessage, Backup, Setting
+from utils import save_uploaded_image, extract_exif_data, format_shutter_speed, generate_slug, create_backup, restore_backup
 
-admin_bp = Blueprint('admin', __name__)
+admin_bp = Blueprint('admin', __name__, template_folder='../templates/admin')
 
-# Admin password
+# Admin password (will be moved to database settings)
 ADMIN_PASSWORD = 'mindseye2025'
 
+# Helper function to check if admin is logged in
+def is_admin_logged_in():
+    return session.get('admin_logged_in', False)
+
+# Login route
 @admin_bp.route('/')
 def admin_login():
     """Admin login page"""
-    if session.get('admin_logged_in'):
+    if is_admin_logged_in():
         return redirect(url_for('admin.admin_dashboard'))
-    return '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Mind's Eye Photography - Admin Login</title>
-        <style>
-            body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-            .login-form { background: #2a2a2a; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-            input { width: 100%; padding: 0.8rem; margin: 0.5rem 0; border: 1px solid #444; background: #333; color: #fff; border-radius: 4px; }
-            button { width: 100%; padding: 0.8rem; background: #ff6b35; color: white; border: none; border-radius: 4px; cursor: pointer; }
-            button:hover { background: #e55a2b; }
-            h2 { text-align: center; color: #ff6b35; }
-        </style>
-    </head>
-    <body>
-        <form class="login-form" method="POST">
-            <h2>Admin Login</h2>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
-    </body>
-    </html>
-    '''
+    return render_template('login.html')
 
 @admin_bp.route('/', methods=['POST'])
 def admin_login_post():
     """Handle admin login"""
     password = request.form.get('password')
-    if password == ADMIN_PASSWORD:
+    
+    # Get password from settings if available
+    setting = Setting.query.filter_by(key='admin_password').first()
+    if setting:
+        admin_password = setting.value
+    else:
+        admin_password = ADMIN_PASSWORD
+    
+    if password == admin_password:
         session['admin_logged_in'] = True
+        flash('Login successful', 'success')
         return redirect(url_for('admin.admin_dashboard'))
     else:
-        flash('Invalid password')
+        flash('Invalid password', 'danger')
         return redirect(url_for('admin.admin_login'))
 
-@admin_bp.route('/dashboard')
-def admin_dashboard():
-    """Admin dashboard"""
-    if not session.get('admin_logged_in'):
-        return redirect(url_for('admin.admin_login'))
-    
-    # Get portfolio data
-    images = []
-    try:
-        with open('static/portfolio.json', 'r') as f:
-            portfolio_data = json.load(f)
-        images = portfolio_data.get('images', [])
-    except:
-        images = []
-    
-    # Build image HTML
-    image_html = ""
-    for img in images:
-        category = img.get('categories', [{}])[0].get('name', 'None') if img.get('categories') else 'None'
-        image_html += f'''
-        <div class="image-item">
-            <img src="/static/{img.get('filename', '')}" alt="{img.get('title', '')}">
-            <div class="image-info">
-                <h3>{img.get('title', '')}</h3>
-                <p>{img.get('description', '')}</p>
-                <p>Category: {category}</p>
-                <p>Camera: {img.get('camera_make', '')}</p>
-                <p>Lens: {img.get('lens', '')}</p>
-            </div>
-        </div>
-        '''
-    
-    return '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Mind's Eye Photography - Admin Dashboard</title>
-        <style>
-            body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; margin: 0; padding: 2rem; }
-            .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-            h1 { color: #ff6b35; }
-            .logout { background: #666; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; }
-            .upload-section { background: #2a2a2a; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; }
-            .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
-            .image-item { background: #2a2a2a; border-radius: 8px; overflow: hidden; }
-            .image-item img { width: 100%; height: 150px; object-fit: cover; }
-            .image-info { padding: 1rem; }
-            .image-info h3 { margin: 0 0 0.5rem 0; color: #ff6b35; }
-            .image-info p { margin: 0.25rem 0; font-size: 0.9rem; color: #ccc; }
-            input, textarea, select { width: 100%; padding: 0.8rem; margin: 0.5rem 0; border: 1px solid #444; background: #333; color: #fff; border-radius: 4px; }
-            button { padding: 0.8rem 1.5rem; background: #ff6b35; color: white; border: none; border-radius: 4px; cursor: pointer; }
-            button:hover { background: #e55a2b; }
-            .success { background: #4CAF50; color: white; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>Mind's Eye Photography - Admin Dashboard</h1>
-            <a href="/admin/logout" class="logout">Logout</a>
-        </div>
-        
-        <div class="upload-section">
-            <h2>Upload New Image</h2>
-            <form method="POST" action="/admin/upload" enctype="multipart/form-data">
-                <input type="file" name="image" accept="image/*" required>
-                <input type="text" name="title" placeholder="Image Title" required>
-                <textarea name="description" placeholder="Image Description" rows="3"></textarea>
-                <select name="category">
-                    <option value="Nature">Nature</option>
-                    <option value="Wildlife">Wildlife</option>
-                    <option value="Flora">Flora</option>
-                    <option value="Pets">Pets</option>
-                    <option value="Landscapes">Landscapes</option>
-                </select>
-                <button type="submit">Upload Image</button>
-            </form>
-        </div>
-        
-        <h2>Current Portfolio (''' + str(len(images)) + ''' images)</h2>
-        <div class="gallery">
-        ''' + image_html + '''
-        </div>
-        
-        <div style="margin-top: 2rem; padding: 1rem; background: #2a2a2a; border-radius: 8px;">
-            <h3>Admin Features Available:</h3>
-            <p>✅ Image Upload & Management</p>
-            <p>✅ Portfolio Display</p>
-            <p>✅ Category Assignment</p>
-            <p>🔧 Enhanced features will be added gradually</p>
-        </div>
-    </body>
-    </html>
-    '''
-
+# Logout route
 @admin_bp.route('/logout')
 def admin_logout():
     """Admin logout"""
     session.pop('admin_logged_in', None)
-    return redirect(url_for('admin.admin_login'))
+    # Redirect to home page instead of login page
+    return redirect(url_for('index'))
 
-@admin_bp.route('/upload', methods=['POST'])
-def upload_image():
-    """Handle image upload"""
-    if not session.get('admin_logged_in'):
+# Dashboard route
+@admin_bp.route('/dashboard')
+def admin_dashboard():
+    """Admin dashboard"""
+    if not is_admin_logged_in():
         return redirect(url_for('admin.admin_login'))
     
-    # Check if the post request has the file part
-    if 'image' not in request.files:
-        flash('No file part')
-        return redirect(url_for('admin.admin_dashboard'))
+    # Get statistics
+    stats = {
+        'image_count': Image.query.count(),
+        'category_count': Category.query.count(),
+        'featured_count': FeaturedImage.query.count(),
+        'message_count': ContactMessage.query.count(),
+        'unread_message_count': ContactMessage.query.filter_by(is_read=False).count(),
+        'db_size': get_db_size()
+    }
     
-    file = request.files['image']
-    if file.filename == '':
-        flash('No selected file')
-        return redirect(url_for('admin.admin_dashboard'))
+    # Get recent images
+    recent_images = Image.query.order_by(Image.created_at.desc()).limit(6).all()
     
-    if file:
-        # Generate a unique filename
-        filename = str(uuid.uuid4()) + os.path.splitext(file.filename)[1]
-        file_path = os.path.join('static', filename)
-        file.save(file_path)
+    # Get recent messages
+    recent_messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).limit(5).all()
+    
+    # Get last backup
+    last_backup = Backup.query.order_by(Backup.created_at.desc()).first()
+    
+    # Get current featured image
+    current_featured = FeaturedImage.query.filter_by(is_active=True).first()
+    
+    # Get settings
+    settings = {}
+    for setting in Setting.query.all():
+        settings[setting.key] = setting.value
+    
+    return render_template('dashboard.html', 
+                          stats=stats, 
+                          recent_images=recent_images,
+                          recent_messages=recent_messages,
+                          last_backup=last_backup,
+                          current_featured=current_featured,
+                          settings=settings)
+
+# Image Management routes
+@admin_bp.route('/images')
+def image_management():
+    """Image management page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # Get query parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 12, type=int)
+    category_id = request.args.get('category', None, type=int)
+    search = request.args.get('search', None)
+    
+    # Build query
+    query = Image.query
+    
+    # Filter by category if specified
+    if category_id:
+        query = query.join(ImageCategory).filter(ImageCategory.category_id == category_id)
+    
+    # Filter by search term if specified
+    if search:
+        query = query.filter(
+            (Image.title.ilike(f'%{search}%')) | 
+            (Image.description.ilike(f'%{search}%'))
+        )
+    
+    # Order by created_at descending
+    query = query.order_by(Image.created_at.desc())
+    
+    # Paginate
+    images = query.paginate(page=page, per_page=per_page)
+    
+    # Get all categories for filter dropdown
+    categories = Category.query.order_by(Category.display_order).all()
+    
+    return render_template('images.html', 
+                          images=images,
+                          categories=categories,
+                          current_category=category_id,
+                          search=search)
+
+@admin_bp.route('/images/upload', methods=['GET', 'POST'])
+def upload_image():
+    """Upload image page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    if request.method == 'POST':
+        # Check if the post request has the file part
+        if 'images[]' not in request.files:
+            flash('No file part', 'danger')
+            return redirect(request.url)
+        
+        files = request.files.getlist('images[]')
+        
+        if not files or files[0].filename == '':
+            flash('No selected file', 'danger')
+            return redirect(request.url)
         
         # Get form data
-        title = request.form.get('title', 'Untitled')
+        title_prefix = request.form.get('title_prefix', '')
         description = request.form.get('description', '')
-        category = request.form.get('category', 'Nature')
+        category_ids = request.form.getlist('categories')
         
-        # Load existing portfolio data
-        try:
-            with open('static/portfolio.json', 'r') as f:
-                portfolio_data = json.load(f)
-        except:
-            portfolio_data = {'images': []}
+        # Convert category IDs to integers
+        category_ids = [int(cat_id) for cat_id in category_ids if cat_id]
         
-        # Add new image
-        new_image = {
-            'id': len(portfolio_data['images']) + 1,
-            'title': title,
-            'description': description,
-            'filename': filename,
-            'categories': [{'name': category}],
-            'camera_make': 'Canon EOS R8',
-            'lens': 'EF24-105mm f/4L IS USM',
-            'created_at': datetime.now().isoformat(),
-            'is_active': True
-        }
+        # Get categories
+        categories = Category.query.filter(Category.id.in_(category_ids)).all()
         
-        portfolio_data['images'].append(new_image)
+        # Process each file
+        success_count = 0
+        for file in files:
+            if file and allowed_file(file.filename):
+                try:
+                    # Save file
+                    filename = save_uploaded_image(file, 'static')
+                    file_path = os.path.join('static', filename)
+                    
+                    # Extract EXIF data
+                    exif_data = extract_exif_data(file_path)
+                    
+                    # Create image record
+                    image = Image(
+                        filename=filename,
+                        title=f"{title_prefix} {success_count + 1}" if title_prefix else f"Image {success_count + 1}",
+                        description=description,
+                        camera_make=exif_data.get('camera_make', ''),
+                        camera_model=exif_data.get('camera_model', ''),
+                        lens=exif_data.get('lens', ''),
+                        aperture=exif_data.get('aperture', ''),
+                        shutter_speed=exif_data.get('shutter_speed', ''),
+                        iso=exif_data.get('iso', 0),
+                        focal_length=exif_data.get('focal_length', ''),
+                        date_taken=exif_data.get('date_taken', None),
+                        is_active=True
+                    )
+                    
+                    # Add to database
+                    db.session.add(image)
+                    db.session.flush()  # Get image ID
+                    
+                    # Add categories
+                    for category in categories:
+                        image_category = ImageCategory(image_id=image.id, category_id=category.id)
+                        db.session.add(image_category)
+                    
+                    success_count += 1
+                except Exception as e:
+                    flash(f'Error uploading file: {str(e)}', 'danger')
         
-        # Save updated portfolio data
-        with open('static/portfolio.json', 'w') as f:
-            json.dump(portfolio_data, f, indent=2)
+        if success_count > 0:
+            db.session.commit()
+            flash(f'Successfully uploaded {success_count} images', 'success')
         
-        return redirect(url_for('admin.admin_dashboard'))
+        return redirect(url_for('admin.image_management'))
+    
+    # Get all categories for the form
+    categories = Category.query.order_by(Category.display_order).all()
+    
+    return render_template('upload.html', categories=categories)
+
+@admin_bp.route('/images/<int:image_id>/edit', methods=['GET', 'POST'])
+def edit_image(image_id):
+    """Edit image page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # Get image
+    image = Image.query.get_or_404(image_id)
+    
+    if request.method == 'POST':
+        # Update image data
+        image.title = request.form.get('title', '')
+        image.description = request.form.get('description', '')
+        image.camera_make = request.form.get('camera_make', '')
+        image.camera_model = request.form.get('camera_model', '')
+        image.lens = request.form.get('lens', '')
+        image.aperture = request.form.get('aperture', '')
+        image.shutter_speed = format_shutter_speed(request.form.get('shutter_speed', ''))
+        image.iso = request.form.get('iso', 0)
+        image.focal_length = request.form.get('focal_length', '')
+        image.location = request.form.get('location', '')
+        image.is_active = 'is_active' in request.form
+        
+        # Update categories
+        category_ids = request.form.getlist('categories')
+        category_ids = [int(cat_id) for cat_id in category_ids if cat_id]
+        
+        # Remove all existing categories
+        ImageCategory.query.filter_by(image_id=image.id).delete()
+        
+        # Add new categories
+        for cat_id in category_ids:
+            image_category = ImageCategory(image_id=image.id, category_id=cat_id)
+            db.session.add(image_category)
+        
+        db.session.commit()
+        flash('Image updated successfully', 'success')
+        return redirect(url_for('admin.image_management'))
+    
+    # Get all categories for the form
+    categories = Category.query.order_by(Category.display_order).all()
+    
+    # Get current category IDs
+    current_category_ids = [cat.id for cat in image.categories]
+    
+    return render_template('edit_image.html', 
+                          image=image,
+                          categories=categories,
+                          current_category_ids=current_category_ids)
+
+@admin_bp.route('/images/<int:image_id>/delete', methods=['POST'])
+def delete_image(image_id):
+    """Delete image"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # Get image
+    image = Image.query.get_or_404(image_id)
+    
+    # Delete image file
+    try:
+        os.remove(os.path.join('static', image.filename))
+    except:
+        pass
+    
+    # Delete image record
+    db.session.delete(image)
+    db.session.commit()
+    
+    flash('Image deleted successfully', 'success')
+    return redirect(url_for('admin.image_management'))
+
+@admin_bp.route('/images/bulk-action', methods=['POST'])
+def bulk_image_action():
+    """Bulk image actions"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    action = request.form.get('action')
+    image_ids = request.form.getlist('image_ids')
+    
+    if not image_ids:
+        flash('No images selected', 'danger')
+        return redirect(url_for('admin.image_management'))
+    
+    # Convert to integers
+    image_ids = [int(id) for id in image_ids]
+    
+    if action == 'delete':
+        # Delete images
+        images = Image.query.filter(Image.id.in_(image_ids)).all()
+        for image in images:
+            # Delete image file
+            try:
+                os.remove(os.path.join('static', image.filename))
+            except:
+                pass
+            
+            # Delete image record
+            db.session.delete(image)
+        
+        db.session.commit()
+        flash(f'Successfully deleted {len(images)} images', 'success')
+    
+    elif action == 'activate':
+        # Activate images
+        Image.query.filter(Image.id.in_(image_ids)).update({Image.is_active: True}, synchronize_session=False)
+        db.session.commit()
+        flash(f'Successfully activated {len(image_ids)} images', 'success')
+    
+    elif action == 'deactivate':
+        # Deactivate images
+        Image.query.filter(Image.id.in_(image_ids)).update({Image.is_active: False}, synchronize_session=False)
+        db.session.commit()
+        flash(f'Successfully deactivated {len(image_ids)} images', 'success')
+    
+    elif action == 'add_category':
+        # Add category to images
+        category_id = request.form.get('category_id')
+        if not category_id:
+            flash('No category selected', 'danger')
+            return redirect(url_for('admin.image_management'))
+        
+        category_id = int(category_id)
+        
+        # Check if category exists
+        category = Category.query.get(category_id)
+        if not category:
+            flash('Category not found', 'danger')
+            return redirect(url_for('admin.image_management'))
+        
+        # Add category to images
+        for image_id in image_ids:
+            # Check if relationship already exists
+            existing = ImageCategory.query.filter_by(image_id=image_id, category_id=category_id).first()
+            if not existing:
+                image_category = ImageCategory(image_id=image_id, category_id=category_id)
+                db.session.add(image_category)
+        
+        db.session.commit()
+        flash(f'Successfully added category "{category.name}" to {len(image_ids)} images', 'success')
+    
+    elif action == 'remove_category':
+        # Remove category from images
+        category_id = request.form.get('category_id')
+        if not category_id:
+            flash('No category selected', 'danger')
+            return redirect(url_for('admin.image_management'))
+        
+        category_id = int(category_id)
+        
+        # Check if category exists
+        category = Category.query.get(category_id)
+        if not category:
+            flash('Category not found', 'danger')
+            return redirect(url_for('admin.image_management'))
+        
+        # Remove category from images
+        ImageCategory.query.filter(
+            ImageCategory.image_id.in_(image_ids),
+            ImageCategory.category_id == category_id
+        ).delete(synchronize_session=False)
+        
+        db.session.commit()
+        flash(f'Successfully removed category "{category.name}" from {len(image_ids)} images', 'success')
+    
+    return redirect(url_for('admin.image_management'))
+
+# Category Management placeholder routes
+@admin_bp.route('/categories')
+def category_management():
+    """Category management page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # This will be implemented in the category management module
+    return "Category Management - Coming Soon"
+
+@admin_bp.route('/categories/add')
+def add_category():
+    """Add category page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # This will be implemented in the category management module
+    return "Add Category - Coming Soon"
+
+# Featured Image Management placeholder routes
+@admin_bp.route('/featured')
+def featured_management():
+    """Featured image management page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # This will be implemented in the featured image management module
+    return "Featured Image Management - Coming Soon"
+
+@admin_bp.route('/featured/set')
+def set_featured():
+    """Set featured image page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # This will be implemented in the featured image management module
+    return "Set Featured Image - Coming Soon"
+
+# Background Management placeholder route
+@admin_bp.route('/backgrounds')
+def background_management():
+    """Background management page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # This will be implemented in the background management module
+    return "Background Management - Coming Soon"
+
+# Contact Management placeholder route
+@admin_bp.route('/messages')
+def contact_management():
+    """Contact message management page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # This will be implemented in the contact management module
+    return "Contact Message Management - Coming Soon"
+
+# Backup Management placeholder routes
+@admin_bp.route('/backups')
+def backup_management():
+    """Backup management page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # This will be implemented in the backup management module
+    return "Backup Management - Coming Soon"
+
+@admin_bp.route('/backups/create')
+def create_backup():
+    """Create backup page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # This will be implemented in the backup management module
+    return "Create Backup - Coming Soon"
+
+# Settings placeholder route
+@admin_bp.route('/settings')
+def settings():
+    """Settings page"""
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
+    
+    # This will be implemented in the settings module
+    return "Settings - Coming Soon"
+
+# Helper functions
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def get_db_size():
+    """Get database size in human-readable format"""
+    try:
+        db_path = 'src/database/mindseye.db'
+        size_bytes = os.path.getsize(db_path)
+        
+        # Convert to human-readable format
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size_bytes < 1024.0:
+                return f"{size_bytes:.1f} {unit}"
+            size_bytes /= 1024.0
+        
+        return f"{size_bytes:.1f} TB"
+    except:
+        return "Unknown"
 

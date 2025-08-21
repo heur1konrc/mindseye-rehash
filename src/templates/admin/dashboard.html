@@ -1,0 +1,150 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard - Mind's Eye Photography Admin{% endblock %}
+
+{% block header %}Dashboard{% endblock %}
+
+{% block content %}
+    <!-- Stats Overview -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <h3>Images</h3>
+            <div class="number">{{ stats.image_count }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Categories</h3>
+            <div class="number">{{ stats.category_count }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Featured</h3>
+            <div class="number">{{ stats.featured_count }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Messages</h3>
+            <div class="number">{{ stats.message_count }}</div>
+            {% if stats.unread_message_count > 0 %}
+                <div style="color: var(--warning-color);">{{ stats.unread_message_count }} unread</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="card mb-20">
+        <div class="card-header">
+            <h2>Quick Actions</h2>
+        </div>
+        <div class="d-flex" style="gap: 15px; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.upload_image') }}" class="btn">
+                <i class="fas fa-upload"></i> Upload Images
+            </a>
+            <a href="{{ url_for('admin.add_category') }}" class="btn">
+                <i class="fas fa-plus"></i> Add Category
+            </a>
+            <a href="{{ url_for('admin.set_featured') }}" class="btn">
+                <i class="fas fa-star"></i> Set Featured Image
+            </a>
+            <a href="{{ url_for('admin.create_backup') }}" class="btn">
+                <i class="fas fa-database"></i> Create Backup
+            </a>
+        </div>
+    </div>
+    
+    <div class="grid">
+        <!-- Recent Images -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Recent Images</h2>
+                <a href="{{ url_for('admin.image_management') }}" class="btn">View All</a>
+            </div>
+            <div class="image-grid">
+                {% for image in recent_images %}
+                    <div class="image-item">
+                        <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.title }}">
+                        <div class="image-overlay">
+                            <h3>{{ image.title }}</h3>
+                            <p>{{ image.categories|map(attribute='name')|join(', ') }}</p>
+                        </div>
+                    </div>
+                {% else %}
+                    <p>No images uploaded yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Recent Messages -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Recent Messages</h2>
+                <a href="{{ url_for('admin.contact_management') }}" class="btn">View All</a>
+            </div>
+            <div>
+                {% for message in recent_messages %}
+                    <div style="padding: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                        <div class="d-flex justify-between">
+                            <strong>{{ message.name }}</strong>
+                            <small>{{ message.created_at.strftime('%Y-%m-%d') }}</small>
+                        </div>
+                        <div>{{ message.subject }}</div>
+                        <div style="opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ message.message[:50] }}{% if message.message|length > 50 %}...{% endif %}
+                        </div>
+                        {% if not message.is_read %}
+                            <span style="color: var(--warning-color); font-size: 0.8rem;">Unread</span>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p>No messages received yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Status -->
+    <div class="card mt-20">
+        <div class="card-header">
+            <h2>System Status</h2>
+        </div>
+        <div>
+            <div class="d-flex justify-between mb-20">
+                <div>
+                    <strong>Last Backup:</strong>
+                    {% if last_backup %}
+                        {{ last_backup.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    {% else %}
+                        Never
+                    {% endif %}
+                </div>
+                <div>
+                    <strong>Auto Backup:</strong>
+                    {% if settings.enable_auto_backup == 'true' %}
+                        <span style="color: var(--success-color);">Enabled</span>
+                    {% else %}
+                        <span style="color: var(--danger-color);">Disabled</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="d-flex justify-between">
+                <div>
+                    <strong>Current Featured Image:</strong>
+                    {% if current_featured %}
+                        {{ current_featured.title }}
+                    {% else %}
+                        None
+                    {% endif %}
+                </div>
+                <div>
+                    <strong>Database Size:</strong>
+                    {{ stats.db_size }}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Any dashboard-specific JavaScript can go here
+</script>
+{% endblock %}
+

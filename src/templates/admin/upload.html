@@ -1,0 +1,326 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Upload Images - Mind's Eye Photography Admin{% endblock %}
+
+{% block header %}Upload Images{% endblock %}
+
+{% block head %}
+<style>
+    .dropzone {
+        border: 2px dashed rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-bottom: 20px;
+    }
+    
+    .dropzone:hover {
+        border-color: var(--primary-color);
+    }
+    
+    .dropzone.active {
+        border-color: var(--success-color);
+        background-color: rgba(46, 204, 113, 0.1);
+    }
+    
+    .dropzone-message {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+    }
+    
+    .dropzone-icon {
+        font-size: 3rem;
+        color: var(--primary-color);
+        margin-bottom: 15px;
+    }
+    
+    .preview-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+    }
+    
+    .preview-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        aspect-ratio: 3/2;
+    }
+    
+    .preview-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .preview-remove {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background-color: rgba(231, 76, 60, 0.8);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.8rem;
+    }
+    
+    .upload-progress {
+        height: 5px;
+        background-color: var(--secondary-bg);
+        margin-top: 20px;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    
+    .upload-progress-bar {
+        height: 100%;
+        background-color: var(--primary-color);
+        width: 0%;
+        transition: width 0.3s;
+    }
+    
+    .upload-status {
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
+    
+    .category-select {
+        height: 150px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Upload Images</h2>
+    </div>
+    
+    <form id="uploadForm" action="{{ url_for('admin.upload_image') }}" method="POST" enctype="multipart/form-data">
+        <div id="dropzone" class="dropzone">
+            <div class="dropzone-icon">
+                <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <div class="dropzone-message">
+                Drag & drop images here or click to select files
+            </div>
+            <div class="dropzone-hint">
+                Supported formats: JPG, PNG, GIF, WEBP
+            </div>
+            <input type="file" id="fileInput" name="images[]" multiple accept="image/*" style="display: none;">
+        </div>
+        
+        <div id="previewContainer" class="preview-container"></div>
+        
+        <div id="uploadProgress" class="upload-progress" style="display: none;">
+            <div id="uploadProgressBar" class="upload-progress-bar"></div>
+        </div>
+        <div id="uploadStatus" class="upload-status" style="display: none;"></div>
+        
+        <div class="grid">
+            <div class="form-group">
+                <label for="titlePrefix">Title Prefix</label>
+                <input type="text" id="titlePrefix" name="title_prefix" class="form-control" placeholder="e.g. 'Sunset at Lake Monona'">
+                <small>A number will be appended to each image (e.g. 'Sunset at Lake Monona 1')</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control" rows="3" placeholder="Enter a description for all images"></textarea>
+                <small>This description will be applied to all uploaded images</small>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="categories">Categories</label>
+            <select id="categories" name="categories" class="form-control category-select" multiple>
+                {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.name }}</option>
+                {% endfor %}
+            </select>
+            <small>Hold Ctrl/Cmd to select multiple categories</small>
+        </div>
+        
+        <div class="text-right">
+            <button type="button" id="cancelButton" class="btn btn-danger" style="display: none;">Cancel</button>
+            <button type="submit" id="uploadButton" class="btn">Upload Images</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const uploadProgressBar = document.getElementById('uploadProgressBar');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const uploadButton = document.getElementById('uploadButton');
+        const cancelButton = document.getElementById('cancelButton');
+        const uploadForm = document.getElementById('uploadForm');
+        
+        let files = [];
+        
+        // Open file dialog when clicking on dropzone
+        dropzone.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        // Handle file selection
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+        
+        // Prevent default behavior for drag events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // Highlight dropzone when dragging over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropzone.classList.add('active');
+        }
+        
+        function unhighlight() {
+            dropzone.classList.remove('active');
+        }
+        
+        // Handle dropped files
+        dropzone.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const droppedFiles = dt.files;
+            
+            handleFiles(droppedFiles);
+        });
+        
+        // Process files
+        function handleFiles(selectedFiles) {
+            const newFiles = Array.from(selectedFiles).filter(file => {
+                // Check if file is an image
+                return file.type.startsWith('image/');
+            });
+            
+            if (newFiles.length === 0) {
+                return;
+            }
+            
+            // Add new files to the array
+            files = [...files, ...newFiles];
+            
+            // Update preview
+            updatePreview();
+        }
+        
+        // Update preview
+        function updatePreview() {
+            // Clear preview
+            previewContainer.innerHTML = '';
+            
+            // Add preview for each file
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'preview-item';
+                    
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    
+                    const removeButton = document.createElement('button');
+                    removeButton.className = 'preview-remove';
+                    removeButton.innerHTML = '<i class="fas fa-times"></i>';
+                    removeButton.addEventListener('click', function() {
+                        removeFile(index);
+                    });
+                    
+                    previewItem.appendChild(img);
+                    previewItem.appendChild(removeButton);
+                    previewContainer.appendChild(previewItem);
+                };
+                
+                reader.readAsDataURL(file);
+            });
+            
+            // Show/hide upload button
+            if (files.length > 0) {
+                uploadButton.textContent = `Upload ${files.length} Image${files.length > 1 ? 's' : ''}`;
+                cancelButton.style.display = 'inline-block';
+            } else {
+                uploadButton.textContent = 'Upload Images';
+                cancelButton.style.display = 'none';
+            }
+        }
+        
+        // Remove file
+        function removeFile(index) {
+            files.splice(index, 1);
+            updatePreview();
+        }
+        
+        // Cancel upload
+        cancelButton.addEventListener('click', function() {
+            files = [];
+            updatePreview();
+        });
+        
+        // Handle form submission
+        uploadForm.addEventListener('submit', function(e) {
+            if (files.length === 0) {
+                e.preventDefault();
+                alert('Please select at least one image to upload.');
+                return;
+            }
+            
+            // Show progress bar
+            uploadProgress.style.display = 'block';
+            uploadStatus.style.display = 'block';
+            uploadStatus.textContent = 'Preparing to upload...';
+            
+            // Disable upload button
+            uploadButton.disabled = true;
+            cancelButton.disabled = true;
+            
+            // Create FormData
+            const formData = new FormData(uploadForm);
+            
+            // Remove existing files
+            formData.delete('images[]');
+            
+            // Add files
+            files.forEach(file => {
+                formData.append('images[]', file);
+            });
+            
+            // Submit form normally
+            // The actual upload will be handled by the server
+        });
+    });
+</script>
+{% endblock %}
+
