@@ -5,7 +5,7 @@ let currentImageIndex = 0;
 // Load portfolio data
 async function loadPortfolio() {
     try {
-        const response = await fetch('/static/portfolio.json');
+        const response = await fetch('/api/portfolio');
         const data = await response.json();
         portfolioData = data.images || [];
         renderPortfolio();
@@ -31,7 +31,7 @@ function renderPortfolio(filter = 'all') {
         const item = document.createElement('div');
         item.className = 'portfolio-item';
         item.innerHTML = `
-            <img src="/static/${image.filename}" alt="${image.title}" loading="lazy">
+            <img src="/static/assets/${image.filename}" alt="${image.title}" loading="lazy">
             <div class="portfolio-overlay">
                 <h3>${image.title}</h3>
                 <p>${image.description}</p>
