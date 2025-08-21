@@ -1,12 +1,7 @@
 from flask import Blueprint, request, redirect, url_for, flash
-from ..models import Category
 
 # Create a simple test upload route
 admin_simple_bp = Blueprint('admin_simple', __name__, url_prefix='/admin')
-
-def is_admin_logged_in():
-    """Simple admin check"""
-    return True  # Bypass for testing
 
 @admin_simple_bp.route('/simple-upload', methods=['GET', 'POST'])
 def simple_upload():
