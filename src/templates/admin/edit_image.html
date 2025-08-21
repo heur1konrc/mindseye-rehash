@@ -1,0 +1,227 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Edit Image - Mind's Eye Photography Admin{% endblock %}
+
+{% block header %}Edit Image{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Edit Image</h2>
+    </div>
+    
+    <div class="grid">
+        <div>
+            <div style="margin-bottom: 20px;">
+                <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.title }}" style="max-width: 100%; border-radius: 8px;">
+            </div>
+            
+            <form action="{{ url_for('admin.edit_image', image_id=image.id) }}" method="POST">
+                <div class="form-group">
+                    <label for="title">Title</label>
+                    <input type="text" id="title" name="title" class="form-control" value="{{ image.title }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" class="form-control" rows="4">{{ image.description }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="categories">Categories</label>
+                    <select id="categories" name="categories" class="form-control" multiple style="height: 150px;">
+                        {% for category in categories %}
+                            <option value="{{ category.id }}" {% if category.id in current_category_ids %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <small>Hold Ctrl/Cmd to select multiple categories</small>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="is_active" name="is_active" {% if image.is_active %}checked{% endif %}>
+                        <label for="is_active">Active (visible on website)</label>
+                    </div>
+                </div>
+                
+                <div class="card mb-20">
+                    <div class="card-header">
+                        <h3>Camera Information</h3>
+                    </div>
+                    
+                    <div class="grid">
+                        <div class="form-group">
+                            <label for="camera_make">Camera Make</label>
+                            <input type="text" id="camera_make" name="camera_make" class="form-control" value="{{ image.camera_make }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="camera_model">Camera Model</label>
+                            <input type="text" id="camera_model" name="camera_model" class="form-control" value="{{ image.camera_model }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="lens">Lens</label>
+                            <input type="text" id="lens" name="lens" class="form-control" value="{{ image.lens }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="aperture">Aperture</label>
+                            <input type="text" id="aperture" name="aperture" class="form-control" value="{{ image.aperture }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="shutter_speed">Shutter Speed</label>
+                            <input type="text" id="shutter_speed" name="shutter_speed" class="form-control" value="{{ image.shutter_speed }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="iso">ISO</label>
+                            <input type="number" id="iso" name="iso" class="form-control" value="{{ image.iso or '' }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="focal_length">Focal Length</label>
+                            <input type="text" id="focal_length" name="focal_length" class="form-control" value="{{ image.focal_length }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="location">Location</label>
+                            <input type="text" id="location" name="location" class="form-control" value="{{ image.location }}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-right">
+                    <a href="{{ url_for('admin.image_management') }}" class="btn" style="background-color: var(--secondary-bg);">Cancel</a>
+                    <button type="submit" class="btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+        
+        <div>
+            <div class="card mb-20">
+                <div class="card-header">
+                    <h3>Image Information</h3>
+                </div>
+                
+                <div>
+                    <div class="d-flex justify-between mb-20">
+                        <div>
+                            <strong>Filename:</strong>
+                        </div>
+                        <div>
+                            {{ image.filename }}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-between mb-20">
+                        <div>
+                            <strong>Uploaded:</strong>
+                        </div>
+                        <div>
+                            {{ image.date_uploaded.strftime('%Y-%m-%d %H:%M') }}
+                        </div>
+                    </div>
+                    
+                    {% if image.date_taken %}
+                    <div class="d-flex justify-between mb-20">
+                        <div>
+                            <strong>Date Taken:</strong>
+                        </div>
+                        <div>
+                            {{ image.date_taken.strftime('%Y-%m-%d %H:%M') }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-between mb-20">
+                        <div>
+                            <strong>View Count:</strong>
+                        </div>
+                        <div>
+                            {{ image.view_count }}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-between">
+                        <div>
+                            <strong>Download Count:</strong>
+                        </div>
+                        <div>
+                            {{ image.download_count }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>Actions</h3>
+                </div>
+                
+                <div>
+                    <button type="button" class="btn w-100 mb-20" onclick="window.open('{{ url_for('static', filename=image.filename) }}', '_blank')">
+                        <i class="fas fa-eye"></i> View Full Size
+                    </button>
+                    
+                    <button type="button" class="btn w-100 mb-20" style="background-color: var(--info-color);" onclick="setAsFeatured()">
+                        <i class="fas fa-star"></i> Set as Featured
+                    </button>
+                    
+                    <button type="button" class="btn w-100 mb-20" style="background-color: var(--warning-color);" onclick="setAsBackground()">
+                        <i class="fas fa-paint-brush"></i> Set as Background
+                    </button>
+                    
+                    <button type="button" class="btn w-100" style="background-color: var(--danger-color);" onclick="confirmDelete()">
+                        <i class="fas fa-trash"></i> Delete Image
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Confirm Delete</h3>
+            <button type="button" class="modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this image?</p>
+            <p>This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn" style="background-color: var(--secondary-bg);" onclick="closeDeleteModal()">Cancel</button>
+            <form action="{{ url_for('admin.delete_image', image_id=image.id) }}" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function confirmDelete() {
+        document.getElementById('deleteModal').style.display = 'flex';
+    }
+    
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = 'none';
+    }
+    
+    function setAsFeatured() {
+        alert('Featured image functionality will be implemented soon.');
+    }
+    
+    function setAsBackground() {
+        alert('Background image functionality will be implemented soon.');
+    }
+</script>
+{% endblock %}
+
