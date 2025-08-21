@@ -51,7 +51,7 @@ except Exception as e:
 
 # Import routes
 from routes.admin import admin_bp
-from routes.admin_simple import admin_simple_bp
+from routes.admin_simple_upload import admin_simple_bp
 from routes.frontend import frontend_bp
 from routes.api import api_bp
 
