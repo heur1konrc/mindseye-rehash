@@ -256,7 +256,59 @@ def upload_image():
     # Get all categories for the form
     categories = Category.query.order_by(Category.display_order).all()
     
-    return render_template('admin/upload.html', categories=categories)
+    # Return simple HTML for testing
+    category_options = ""
+    for cat in categories:
+        category_options += f'<option value="{cat.id}">{cat.name}</option>'
+    
+    return f"""
+    <html>
+    <head>
+        <title>Upload Images</title>
+        <style>
+            body {{ background: #2c3e50; color: white; font-family: Arial; padding: 20px; }}
+            .container {{ max-width: 800px; margin: 0 auto; }}
+            .form-group {{ margin: 15px 0; }}
+            input, select, textarea {{ padding: 10px; margin: 5px 0; width: 100%; }}
+            button {{ background: #f57931; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; }}
+            a {{ color: #f57931; text-decoration: none; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📸 Upload Images</h1>
+            
+            <form action="/admin/images/upload" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Select Images:</label>
+                    <input type="file" name="images[]" multiple accept="image/*" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Title Prefix:</label>
+                    <input type="text" name="title_prefix" placeholder="e.g., Sunset">
+                </div>
+                
+                <div class="form-group">
+                    <label>Description:</label>
+                    <textarea name="description" rows="3" placeholder="Image description"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Categories:</label>
+                    <select name="categories" multiple>
+                        {category_options}
+                    </select>
+                </div>
+                
+                <button type="submit">Upload Images</button>
+            </form>
+            
+            <p><a href="/admin/dashboard">← Back to Dashboard</a></p>
+        </div>
+    </body>
+    </html>
+    """
 
 @admin_bp.route('/images/<int:image_id>/edit', methods=['GET', 'POST'])
 def edit_image(image_id):
