@@ -51,10 +51,21 @@ except Exception as e:
 # Import routes
 from routes.admin import admin_bp
 from routes.frontend import frontend_bp
+from routes.api import api_bp
 
 # Register blueprints
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(frontend_bp)
+app.register_blueprint(api_bp, url_prefix='/api')
+
+# Error handlers
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('error.html', error_code=404, error_message="Page not found"), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    return render_template('error.html', error_code=500, error_message="Server error"), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
