@@ -192,12 +192,15 @@ def upload_image():
     
     if request.method == 'POST':
         try:
+            flash('Starting upload process...', 'info')
+            
             # Check if the post request has the file part
             if 'images[]' not in request.files:
                 flash('No file part', 'danger')
                 return redirect(request.url)
             
             files = request.files.getlist('images[]')
+            flash(f'Found {len(files)} files in request', 'info')
             
             if not files or files[0].filename == '':
                 flash('No selected file', 'danger')
@@ -207,24 +210,30 @@ def upload_image():
             title_prefix = request.form.get('title_prefix', '')
             description = request.form.get('description', '')
             category_ids = request.form.getlist('categories')
+            flash(f'Form data: title_prefix={title_prefix}, categories={category_ids}', 'info')
             
             # Convert category IDs to integers
             category_ids = [int(cat_id) for cat_id in category_ids if cat_id]
             
             # Get categories
             categories = Category.query.filter(Category.id.in_(category_ids)).all()
+            flash(f'Found {len(categories)} categories', 'info')
             
             # Process each file
             success_count = 0
             for file in files:
                 if file and allowed_file(file.filename):
                     try:
+                        flash(f'Processing file: {file.filename}', 'info')
+                        
                         # Save file to assets folder
                         filename = save_uploaded_image(file, 'static/assets')
                         file_path = os.path.join('static/assets', filename)
+                        flash(f'File saved as: {filename}', 'info')
                         
                         # Extract EXIF data
                         exif_data = extract_exif_data(file_path)
+                        flash(f'EXIF extracted: {len(exif_data)} fields', 'info')
                         
                         # Create image record
                         image = Image(
@@ -241,23 +250,31 @@ def upload_image():
                             date_taken=exif_data.get('date_taken', None),
                             is_active=True
                         )
+                        flash(f'Image record created for: {image.title}', 'info')
                         
                         # Add to database
                         db.session.add(image)
                         db.session.flush()  # Get image ID
+                        flash(f'Image added to session with ID: {image.id}', 'info')
                         
                         # Add categories
                         for category in categories:
                             image_category = ImageCategory(image_id=image.id, category_id=category.id)
                             db.session.add(image_category)
+                        flash(f'Added {len(categories)} category associations', 'info')
                         
                         success_count += 1
                     except Exception as e:
                         flash(f'Error uploading file {file.filename}: {str(e)}', 'danger')
+                else:
+                    flash(f'File {file.filename} not allowed or invalid', 'warning')
             
             if success_count > 0:
+                flash(f'Committing {success_count} images to database...', 'info')
                 db.session.commit()
                 flash(f'Successfully uploaded {success_count} images', 'success')
+            else:
+                flash('No images were processed successfully', 'warning')
             
             return redirect(url_for('admin.admin_dashboard'))
             
