@@ -51,7 +51,7 @@ def admin_login():
     """Admin login page"""
     if is_admin_logged_in():
         return redirect(url_for('admin.admin_dashboard'))
-    return render_template('login.html')
+    return render_template('admin/login.html')
 
 @admin_bp.route('/', methods=['POST'])
 def admin_login_post():
