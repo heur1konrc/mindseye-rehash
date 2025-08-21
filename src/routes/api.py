@@ -261,3 +261,21 @@ def load_sample_data():
         logger.error(f"Error loading sample data: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
+
+@api_bp.route('/image/<filename>')
+def serve_image(filename):
+    """Serve images from the assets folder"""
+    try:
+        import os
+        from flask import send_from_directory
+        
+        # Get the static assets directory
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'assets')
+        
+        # Serve the file
+        return send_from_directory(static_dir, filename)
+    except Exception as e:
+        logger.error(f"Error serving image {filename}: {e}")
+        return jsonify({'error': 'Image not found'}), 404
+

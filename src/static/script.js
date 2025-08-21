@@ -31,7 +31,7 @@ function renderPortfolio(filter = 'all') {
         const item = document.createElement('div');
         item.className = 'portfolio-item';
         item.innerHTML = `
-            <img src="/static/assets/${image.filename}" alt="${image.title}" loading="lazy">
+            <img src="/api/image/${image.filename}" alt="${image.title}" loading="lazy">
             <div class="portfolio-overlay">
                 <h3>${image.title}</h3>
                 <p>${image.description}</p>
