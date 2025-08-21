@@ -27,7 +27,7 @@ def simple_upload():
     <body>
         <h1>Simple Upload Test</h1>
         <form method="POST" enctype="multipart/form-data">
-            <input type="file" name="test_file" required>
+            <input type="file" name="test_file">
             <input type="text" name="test_text" placeholder="Test text">
             <button type="submit">Test Upload</button>
         </form>
