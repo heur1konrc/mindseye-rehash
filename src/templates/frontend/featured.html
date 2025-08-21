@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Featured Image - Mind's Eye Photography</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #19114f;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+        
+        header {
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #f57931;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        nav ul li {
+            margin-left: 1.5rem;
+        }
+        
+        nav ul li a {
+            color: #ffffff;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        nav ul li a:hover {
+            color: #f57931;
+        }
+        
+        .page-header {
+            padding-top: 8rem;
+            padding-bottom: 3rem;
+            text-align: center;
+        }
+        
+        .page-header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #f57931;
+        }
+        
+        section {
+            padding: 3rem 0;
+        }
+        
+        .featured-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .featured-image {
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        
+        .featured-image img {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .featured-details {
+            width: 100%;
+            max-width: 900px;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 2rem;
+            border-radius: 8px;
+        }
+        
+        .featured-details h2 {
+            color: #f57931;
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+        
+        .featured-details p {
+            line-height: 1.8;
+            margin-bottom: 1.5rem;
+        }
+        
+        .camera-details {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .camera-details h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: #f57931;
+            font-size: 1.2rem;
+        }
+        
+        .camera-details ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .camera-details ul li {
+            margin-bottom: 0.5rem;
+            display: flex;
+        }
+        
+        .camera-details ul li strong {
+            width: 120px;
+            display: inline-block;
+            color: #f57931;
+        }
+        
+        .story-block {
+            margin-top: 2rem;
+        }
+        
+        .story-block h3 {
+            color: #f57931;
+            margin-bottom: 1rem;
+        }
+        
+        .share-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .share-button {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            color: #ffffff;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+        
+        .share-button:hover {
+            background-color: #f57931;
+        }
+        
+        .download-button {
+            display: inline-block;
+            background-color: #f57931;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            margin-top: 2rem;
+        }
+        
+        .download-button:hover {
+            background-color: #e06820;
+        }
+        
+        footer {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: 3rem;
+        }
+        
+        footer p {
+            margin: 0;
+            opacity: 0.7;
+        }
+        
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+            }
+            
+            nav ul {
+                margin-top: 1rem;
+            }
+            
+            .page-header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container nav-container">
+            <div class="logo">Mind's Eye Photography</div>
+            <nav>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/portfolio">Portfolio</a></li>
+                    <li><a href="/featured">Featured</a></li>
+                    <li><a href="/about">About</a></li>
+                    <li><a href="/contact">Contact</a></li>
+                    <li><a href="/admin">Admin</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <div class="page-header">
+        <div class="container">
+            <h1>Featured Image</h1>
+        </div>
+    </div>
+    
+    <section>
+        <div class="container">
+            <div class="featured-content">
+                <div class="featured-image">
+                    <img src="/static/sample_images/sunset_lake.png" alt="Featured Image" id="featuredImage">
+                </div>
+                
+                <div class="featured-details">
+                    <h2 id="featuredTitle">Sunset at Lake Monona</h2>
+                    
+                    <div class="camera-details">
+                        <h3>Camera Details</h3>
+                        <ul>
+                            <li><strong>Camera:</strong> <span id="camera">Canon EOS R8</span></li>
+                            <li><strong>Lens:</strong> <span id="lens">RF 24-105mm f/4L IS USM</span></li>
+                            <li><strong>Aperture:</strong> <span id="aperture">f/8.0</span></li>
+                            <li><strong>Shutter Speed:</strong> <span id="shutterSpeed">1/125</span></li>
+                            <li><strong>ISO:</strong> <span id="iso">100</span></li>
+                            <li><strong>Focal Length:</strong> <span id="focalLength">35mm</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="story-block">
+                        <h3>The Story Behind the Image</h3>
+                        <p id="featuredStory">This image was captured during a perfect summer evening at Lake Monona in Madison. I had been waiting for weeks for the perfect conditions - clear skies with just enough clouds to catch the colors of sunset. As the sun began to dip below the horizon, the entire sky erupted in vibrant oranges and purples, reflecting perfectly in the calm waters of the lake. The silhouettes of the fishing piers created a perfect focal point against the colorful backdrop. This moment represents everything I love about photography in Wisconsin - the unexpected beauty that can appear in familiar places when the light is just right.</p>
+                    </div>
+                    
+                    <div class="share-buttons">
+                        <a href="#" class="share-button" id="shareFacebook">Share on Facebook</a>
+                        <a href="#" class="share-button" id="shareTwitter">Share on Twitter</a>
+                        <a href="#" class="share-button" id="shareInstagram">Share on Instagram</a>
+                    </div>
+                    
+                    <a href="#" class="download-button" id="downloadImage">Download Wallpaper</a>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Mind's Eye Photography. All rights reserved.</p>
+        </div>
+    </footer>
+    
+    <script>
+        // Load featured image data
+        fetch('/api/featured')
+            .then(response => response.json())
+            .then(data => {
+                if (data.featured) {
+                    const featured = data.featured;
+                    
+                    // Update image and details
+                    document.getElementById('featuredImage').src = featured.image_path;
+                    document.getElementById('featuredTitle').textContent = featured.title;
+                    document.getElementById('featuredStory').textContent = featured.story;
+                    
+                    // Update camera details if available
+                    if (featured.camera) document.getElementById('camera').textContent = featured.camera;
+                    if (featured.lens) document.getElementById('lens').textContent = featured.lens;
+                    if (featured.aperture) document.getElementById('aperture').textContent = featured.aperture;
+                    if (featured.shutter_speed) document.getElementById('shutterSpeed').textContent = featured.shutter_speed;
+                    if (featured.iso) document.getElementById('iso').textContent = featured.iso;
+                    if (featured.focal_length) document.getElementById('focalLength').textContent = featured.focal_length;
+                    
+                    // Set up share buttons
+                    const pageUrl = encodeURIComponent(window.location.href);
+                    const pageTitle = encodeURIComponent(`Check out this amazing featured photo: ${featured.title}`);
+                    
+                    document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${pageUrl}`;
+                    document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?text=${pageTitle}&url=${pageUrl}`;
+                    document.getElementById('shareInstagram').href = `https://www.instagram.com/`;
+                    
+                    // Set up download link
+                    document.getElementById('downloadImage').href = featured.image_path;
+                    document.getElementById('downloadImage').download = featured.title.replace(/\s+/g, '_').toLowerCase() + '.jpg';
+                }
+            })
+            .catch(error => console.error('Error loading featured image:', error));
+    </script>
+</body>
+</html>
+
