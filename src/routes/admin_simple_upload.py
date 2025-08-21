@@ -1,13 +1,13 @@
 from flask import Blueprint, request, redirect, url_for, flash
 
-# Create a simple test upload route
-admin_simple_bp = Blueprint('admin_simple', __name__, url_prefix='/admin')
+# Create a completely separate test route to avoid admin conflicts
+test_bp = Blueprint('test', __name__, url_prefix='/test')
 
-@admin_simple_bp.route('/simple-upload', methods=['GET', 'POST'])
-def simple_upload():
-    """Simple upload test"""
+@test_bp.route('/upload', methods=['GET', 'POST'])
+def test_upload():
+    """Completely separate upload test"""
     if request.method == 'POST':
-        flash('🚨 SIMPLE UPLOAD POST RECEIVED!', 'success')
+        flash('🚨 TEST UPLOAD POST RECEIVED!', 'success')
         flash(f'Form data: {dict(request.form)}', 'info')
         flash(f'Files: {list(request.files.keys())}', 'info')
         return redirect(request.url)
@@ -16,7 +16,7 @@ def simple_upload():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Simple Upload Test - REBUILD v2</title>
+        <title>Test Upload - SEPARATE ROUTE</title>
         <style>
             body { background: #2c3e50; color: white; font-family: Arial; padding: 20px; }
             form { max-width: 400px; margin: 0 auto; }
@@ -26,8 +26,8 @@ def simple_upload():
         </style>
     </head>
     <body>
-        <h1>Simple Upload Test</h1>
-        <p class="version">VERSION: REBUILD v2 - NO REQUIRED ATTRIBUTE</p>
+        <h1>Test Upload - SEPARATE ROUTE</h1>
+        <p class="version">URL: /test/upload - NO ADMIN CONFLICTS</p>
         <form method="POST" enctype="multipart/form-data">
             <input type="file" name="test_file">
             <input type="text" name="test_text" placeholder="Test text">

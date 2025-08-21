@@ -51,13 +51,13 @@ except Exception as e:
 
 # Import routes
 from routes.admin import admin_bp
-from routes.admin_simple_upload import admin_simple_bp
+from routes.admin_simple_upload import test_bp
 from routes.frontend import frontend_bp
 from routes.api import api_bp
 
 # Register blueprints
 app.register_blueprint(admin_bp, url_prefix='/admin')
-app.register_blueprint(admin_simple_bp)
+app.register_blueprint(test_bp)
 app.register_blueprint(frontend_bp)
 app.register_blueprint(api_bp, url_prefix='/api')
 
