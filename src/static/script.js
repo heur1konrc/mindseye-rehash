@@ -16,7 +16,11 @@ async function loadPortfolio() {
 
 // Render portfolio grid
 function renderPortfolio(filter = 'all') {
-    const grid = document.getElementById('portfolioGrid');
+    const grid = document.querySelector('.portfolio-grid');
+    if (!grid) {
+        console.error('Portfolio grid element not found');
+        return;
+    }
     grid.innerHTML = '';
 
     const filteredImages = filter === 'all' 
@@ -113,7 +117,7 @@ function openModal(index, images = portfolioData) {
     const modalCamera = document.getElementById('modalCamera');
 
     const image = images[index];
-    modalImage.src = `/static/${image.filename}`;
+    modalImage.src = `/api/image/${image.filename}`;
     modalTitle.textContent = image.title;
     modalDescription.textContent = image.description;
     modalCamera.textContent = `${image.camera_make} | ${image.lens} | f/${image.aperture} | ISO ${image.iso}`;
