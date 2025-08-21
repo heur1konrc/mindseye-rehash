@@ -18,6 +18,8 @@
 - [x] Portfolio section displaying images correctly
 - [x] Fix JavaScript to use API instead of static JSON
 - [x] Fix image paths to use /static/assets/ folder
+- [x] Create API image serving endpoint
+- [x] Fix JavaScript portfolio grid selector mismatch
 - [ ] Optimize image loading for performance
 - [ ] Enhance image modal with additional details
 

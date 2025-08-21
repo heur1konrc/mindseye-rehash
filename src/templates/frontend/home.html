@@ -291,7 +291,7 @@
                     item.dataset.categories = image.categories.map(cat => cat.slug).join(' ');
                     
                     item.innerHTML = `
-                        <img src="${image.image_path}" alt="${image.title}">
+                        <img src="/api/image/${image.filename}" alt="${image.title}">
                         <div class="portfolio-item-overlay">
                             <h3>${image.title}</h3>
                             <p>${image.description}</p>
