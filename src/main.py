@@ -17,7 +17,7 @@ if current_dir not in sys.path:
     sys.path.append(current_dir)
 
 # Now we can import our modules
-from models import db, init_db, import_legacy_data
+from models import db, init_db, import_legacy_data, Image
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = 'mindseye2025'
