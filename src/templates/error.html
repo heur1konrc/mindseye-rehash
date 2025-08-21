@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error - Mind's Eye Photography</title>
+    <title>Error {{ error_code }} - Mind's Eye Photography</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -28,6 +28,7 @@
         h1 {
             color: #f57931;
             margin-bottom: 1rem;
+            font-size: 3rem;
         }
         p {
             margin-bottom: 1.5rem;
@@ -56,13 +57,15 @@
 </head>
 <body>
     <div class="error-container">
-        <h1>Oops! Something went wrong</h1>
-        <p>We're sorry, but we encountered an error while processing your request.</p>
-        <p>{{ error }}</p>
+        <h1>{{ error_code }}</h1>
+        {% if error_code == 404 %}
+            <p>The page you are looking for doesn't exist or has been moved.</p>
+        {% elif error_code == 500 %}
+            <p>Something went wrong on our end. We're working to fix it.</p>
+        {% else %}
+            <p>{{ error_message }}</p>
+        {% endif %}
         <a href="/" class="btn">Return to Home</a>
-        <div class="error-code">
-            Error Code: {{ error.code if error.code else '500' }}
-        </div>
     </div>
 </body>
 </html>
