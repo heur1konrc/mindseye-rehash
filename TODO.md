@@ -16,6 +16,8 @@
 - [x] Ensure responsive design works on all devices
 - [x] Fix sample data loading API
 - [x] Portfolio section displaying images correctly
+- [x] Fix JavaScript to use API instead of static JSON
+- [x] Fix image paths to use /static/assets/ folder
 - [ ] Optimize image loading for performance
 - [ ] Enhance image modal with additional details
 
