@@ -117,31 +117,48 @@ def admin_upload():
             uploaded_count = 0
             for i, file in enumerate(files):
                 if file and file.filename:
-                    # Generate unique filename
-                    filename = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
-                    
-                    # Save file
-                    upload_path = os.path.join(app.static_folder, 'assets', filename)
-                    os.makedirs(os.path.dirname(upload_path), exist_ok=True)
-                    file.save(upload_path)
-                    
-                    # Create database record
-                    image = Image(
-                        title=f"{title_prefix} {i+1}",
-                        filename=filename,
-                        description=description,
-                        date_uploaded=datetime.now()
-                    )
-                    db.session.add(image)
-                    uploaded_count += 1
+                    try:
+                        # Generate unique filename
+                        filename = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
+                        
+                        # Save file
+                        upload_path = os.path.join(app.static_folder, 'assets', filename)
+                        os.makedirs(os.path.dirname(upload_path), exist_ok=True)
+                        file.save(upload_path)
+                        
+                        # Create database record
+                        image = Image(
+                            title=f"{title_prefix} {i+1}",
+                            filename=filename,
+                            description=description,
+                            date_uploaded=datetime.now()
+                        )
+                        db.session.add(image)
+                        uploaded_count += 1
+                        
+                    except Exception as file_error:
+                        return f"""
+                        <h1 style="color: red;">❌ File Processing Error</h1>
+                        <p>Error processing file {file.filename}: {str(file_error)}</p>
+                        <p><a href="/admin-upload">Try Again</a></p>
+                        """
             
-            db.session.commit()
-            
-            return f"""
-            <h1 style="color: green;">🎉 SUCCESS! Uploaded {uploaded_count} images! 🎉</h1>
-            <p><a href="/admin-upload">Upload More</a></p>
-            <p><a href="/admin/dashboard">Back to Dashboard</a></p>
-            """
+            # Commit all database changes
+            try:
+                db.session.commit()
+                return f"""
+                <h1 style="color: green;">🎉 SUCCESS! Uploaded {uploaded_count} images! 🎉</h1>
+                <p>Images saved to database and files stored successfully.</p>
+                <p><a href="/admin-upload">Upload More</a></p>
+                <p><a href="/admin/dashboard">Back to Dashboard</a></p>
+                """
+            except Exception as db_error:
+                db.session.rollback()
+                return f"""
+                <h1 style="color: red;">❌ Database Error</h1>
+                <p>Files uploaded but database save failed: {str(db_error)}</p>
+                <p><a href="/admin-upload">Try Again</a></p>
+                """
             
         except Exception as e:
             return f"""
