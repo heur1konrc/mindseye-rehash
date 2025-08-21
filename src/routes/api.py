@@ -145,23 +145,37 @@ def submit_contact():
 def load_sample_data():
     """Load sample data for development/testing"""
     try:
-        # Check if database is empty
-        if Image.query.count() == 0:
-            # Create sample categories
-            categories = [
-                Category(name='Landscapes', slug='landscapes', color_code='#4CAF50'),
-                Category(name='Wildlife', slug='wildlife', color_code='#FF9800'),
-                Category(name='Portraits', slug='portraits', color_code='#2196F3'),
-                Category(name='Events', slug='events', color_code='#9C27B0'),
-                Category(name='Nature', slug='nature', color_code='#8BC34A')
-            ]
-            
-            for category in categories:
+        # Check if we need to add sample data
+        sample_data_added = False
+        
+        # Create sample categories if they don't exist
+        category_data = [
+            {'name': 'Landscapes', 'slug': 'landscapes', 'color_code': '#4CAF50'},
+            {'name': 'Wildlife', 'slug': 'wildlife', 'color_code': '#FF9800'},
+            {'name': 'Portraits', 'slug': 'portraits', 'color_code': '#2196F3'},
+            {'name': 'Events', 'slug': 'events', 'color_code': '#9C27B0'},
+            {'name': 'Nature', 'slug': 'nature', 'color_code': '#8BC34A'}
+        ]
+        
+        for cat_data in category_data:
+            # Check if category exists
+            existing_category = Category.query.filter_by(slug=cat_data['slug']).first()
+            if not existing_category:
+                # Create new category
+                category = Category(
+                    name=cat_data['name'],
+                    slug=cat_data['slug'],
+                    color_code=cat_data['color_code']
+                )
                 db.session.add(category)
-            
+                sample_data_added = True
+        
+        # Commit categories first
+        if sample_data_added:
             db.session.commit()
-            
-            # Create sample images
+        
+        # Create sample images if they don't exist
+        if Image.query.count() == 0:
             images = [
                 {
                     'title': 'Sunset at Lake Monona',
@@ -190,31 +204,36 @@ def load_sample_data():
             ]
             
             for img_data in images:
-                # Create image
-                image = Image(
-                    title=img_data['title'],
-                    description=img_data['description'],
-                    image_path=img_data['image_path'],
-                    camera=img_data['camera'],
-                    lens=img_data['lens'],
-                    aperture=img_data['aperture'],
-                    shutter_speed=img_data['shutter_speed'],
-                    iso=img_data['iso'],
-                    focal_length=img_data['focal_length']
-                )
-                
-                db.session.add(image)
-                db.session.flush()  # Get the image ID
-                
-                # Add categories
-                for cat_slug in img_data['categories']:
-                    category = Category.query.filter_by(slug=cat_slug).first()
-                    if category:
-                        image.categories.append(category)
+                # Check if image exists
+                existing_image = Image.query.filter_by(title=img_data['title']).first()
+                if not existing_image:
+                    # Create image
+                    image = Image(
+                        title=img_data['title'],
+                        description=img_data['description'],
+                        image_path=img_data['image_path'],
+                        camera=img_data['camera'],
+                        lens=img_data['lens'],
+                        aperture=img_data['aperture'],
+                        shutter_speed=img_data['shutter_speed'],
+                        iso=img_data['iso'],
+                        focal_length=img_data['focal_length']
+                    )
+                    
+                    db.session.add(image)
+                    db.session.flush()  # Get the image ID
+                    
+                    # Add categories
+                    for cat_slug in img_data['categories']:
+                        category = Category.query.filter_by(slug=cat_slug).first()
+                        if category:
+                            image.categories.append(category)
+                    
+                    sample_data_added = True
             
-            # Create featured image
-            if images:
-                image = Image.query.first()
+            # Create featured image if none exists
+            if FeaturedImage.query.count() == 0:
+                image = Image.query.filter_by(title='Sunset at Lake Monona').first()
                 if image:
                     featured = FeaturedImage(
                         image_id=image.id,
@@ -223,12 +242,14 @@ def load_sample_data():
                         end_date='2025-08-31'
                     )
                     db.session.add(featured)
-            
-            db.session.commit()
-            
-            return jsonify({'success': True, 'message': 'Sample data loaded successfully'})
+                    sample_data_added = True
         
-        return jsonify({'success': False, 'message': 'Database is not empty'})
+        # Commit all changes
+        if sample_data_added:
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Sample data loaded successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'No new sample data needed'})
     
     except Exception as e:
         logger.error(f"Error loading sample data: {str(e)}")
