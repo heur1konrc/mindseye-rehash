@@ -4,6 +4,10 @@ Frontend routes for the website
 from flask import Blueprint, render_template, send_from_directory, current_app, request, redirect, url_for, jsonify
 import os
 import sys
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Add the parent directory to the path so we can import modules
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,9 +20,49 @@ from models import db, Image, Category, ImageCategory, FeaturedImage, Background
 frontend_bp = Blueprint('frontend', __name__)
 
 @frontend_bp.route('/')
-def index():
+def home():
     """Home page"""
-    return render_template('frontend/home.html')
+    try:
+        return render_template('frontend/home.html')
+    except Exception as e:
+        logger.error(f"Error rendering home page: {str(e)}")
+        return render_template('error.html', error_code=500, error_message=f"Error rendering home page: {str(e)}"), 500
+
+@frontend_bp.route('/portfolio')
+def portfolio():
+    """Portfolio page"""
+    try:
+        return render_template('frontend/portfolio.html')
+    except Exception as e:
+        logger.error(f"Error rendering portfolio page: {str(e)}")
+        return render_template('error.html', error_code=500, error_message=f"Error rendering portfolio page: {str(e)}"), 500
+
+@frontend_bp.route('/featured')
+def featured():
+    """Featured image page"""
+    try:
+        return render_template('frontend/featured.html')
+    except Exception as e:
+        logger.error(f"Error rendering featured page: {str(e)}")
+        return render_template('error.html', error_code=500, error_message=f"Error rendering featured page: {str(e)}"), 500
+
+@frontend_bp.route('/about')
+def about():
+    """About page"""
+    try:
+        return render_template('frontend/about.html')
+    except Exception as e:
+        logger.error(f"Error rendering about page: {str(e)}")
+        return render_template('error.html', error_code=500, error_message=f"Error rendering about page: {str(e)}"), 500
+
+@frontend_bp.route('/contact')
+def contact():
+    """Contact page"""
+    try:
+        return render_template('frontend/contact.html')
+    except Exception as e:
+        logger.error(f"Error rendering contact page: {str(e)}")
+        return render_template('error.html', error_code=500, error_message=f"Error rendering contact page: {str(e)}"), 500
 
 @frontend_bp.route('/static/<path:filename>')
 def serve_static(filename):
