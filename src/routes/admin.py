@@ -184,74 +184,26 @@ def upload_image():
         return redirect(url_for('admin.admin_login'))
     
     if request.method == 'POST':
-        # Check if the post request has the file part
-        if 'images[]' not in request.files:
-            flash('No file part', 'danger')
+        # Simple debug version to isolate the issue
+        try:
+            # Check if the post request has the file part
+            if 'images[]' not in request.files:
+                flash('No file part', 'danger')
+                return redirect(request.url)
+            
+            files = request.files.getlist('images[]')
+            
+            if not files or files[0].filename == '':
+                flash('No selected file', 'danger')
+                return redirect(request.url)
+            
+            # Just return success for now to test if basic POST works
+            flash(f'POST request received with {len(files)} files', 'success')
             return redirect(request.url)
-        
-        files = request.files.getlist('images[]')
-        
-        if not files or files[0].filename == '':
-            flash('No selected file', 'danger')
+            
+        except Exception as e:
+            flash(f'Error in upload processing: {str(e)}', 'danger')
             return redirect(request.url)
-        
-        # Get form data
-        title_prefix = request.form.get('title_prefix', '')
-        description = request.form.get('description', '')
-        category_ids = request.form.getlist('categories')
-        
-        # Convert category IDs to integers
-        category_ids = [int(cat_id) for cat_id in category_ids if cat_id]
-        
-        # Get categories
-        categories = Category.query.filter(Category.id.in_(category_ids)).all()
-        
-        # Process each file
-        success_count = 0
-        for file in files:
-            if file and allowed_file(file.filename):
-                try:
-                    # Save file to assets folder (not sub-directory)
-                    filename = save_uploaded_image(file, 'static/assets')
-                    file_path = os.path.join('static/assets', filename)
-                    
-                    # Extract EXIF data
-                    exif_data = extract_exif_data(file_path)
-                    
-                    # Create image record
-                    image = Image(
-                        filename=filename,
-                        title=f"{title_prefix} {success_count + 1}" if title_prefix else f"Image {success_count + 1}",
-                        description=description,
-                        camera_make=exif_data.get('camera_make', ''),
-                        camera_model=exif_data.get('camera_model', ''),
-                        lens=exif_data.get('lens', ''),
-                        aperture=exif_data.get('aperture', ''),
-                        shutter_speed=exif_data.get('shutter_speed', ''),
-                        iso=exif_data.get('iso', 0),
-                        focal_length=exif_data.get('focal_length', ''),
-                        date_taken=exif_data.get('date_taken', None),
-                        is_active=True
-                    )
-                    
-                    # Add to database
-                    db.session.add(image)
-                    db.session.flush()  # Get image ID
-                    
-                    # Add categories
-                    for category in categories:
-                        image_category = ImageCategory(image_id=image.id, category_id=category.id)
-                        db.session.add(image_category)
-                    
-                    success_count += 1
-                except Exception as e:
-                    flash(f'Error uploading file: {str(e)}', 'danger')
-        
-        if success_count > 0:
-            db.session.commit()
-            flash(f'Successfully uploaded {success_count} images', 'success')
-        
-        return redirect(url_for('admin.image_management'))
     
     # GET request - show upload form
     categories = Category.query.order_by(Category.display_order).all()
