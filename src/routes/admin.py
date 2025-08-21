@@ -180,24 +180,8 @@ def image_management():
 @admin_bp.route('/images/upload', methods=['GET', 'POST'])
 def upload_image():
     """Upload image page"""
-    # Temporarily bypass authentication for testing
-    # if not is_admin_logged_in():
-    #     return redirect(url_for('admin.admin_login'))
-    
-    if request.method == 'GET':
-        # Simple test response
-        return """
-        <html>
-        <head><title>Upload Test</title></head>
-        <body style="background: #2c3e50; color: white; padding: 20px;">
-            <h1>Upload Route Working!</h1>
-            <p>The upload route is accessible.</p>
-            <p><a href="/admin/dashboard" style="color: #f57931;">Back to Dashboard</a></p>
-        </body>
-        </html>
-        """
-    
-    return "POST method reached"
+    if not is_admin_logged_in():
+        return redirect(url_for('admin.admin_login'))
     
     if request.method == 'POST':
         # Check if the post request has the file part
@@ -227,9 +211,9 @@ def upload_image():
         for file in files:
             if file and allowed_file(file.filename):
                 try:
-                    # Save file
-                    filename = save_uploaded_image(file, 'static')
-                    file_path = os.path.join('static', filename)
+                    # Save file to assets folder (not sub-directory)
+                    filename = save_uploaded_image(file, 'static/assets')
+                    file_path = os.path.join('static/assets', filename)
                     
                     # Extract EXIF data
                     exif_data = extract_exif_data(file_path)
@@ -269,10 +253,10 @@ def upload_image():
         
         return redirect(url_for('admin.image_management'))
     
-    # Get all categories for the form
+    # GET request - show upload form
     categories = Category.query.order_by(Category.display_order).all()
     
-    # Return simple HTML for testing
+    # Create professional upload form
     category_options = ""
     for cat in categories:
         category_options += f'<option value="{cat.id}">{cat.name}</option>'
@@ -280,47 +264,125 @@ def upload_image():
     return f"""
     <html>
     <head>
-        <title>Upload Images</title>
+        <title>Upload Images - Mind's Eye Photography Admin</title>
         <style>
-            body {{ background: #2c3e50; color: white; font-family: Arial; padding: 20px; }}
-            .container {{ max-width: 800px; margin: 0 auto; }}
-            .form-group {{ margin: 15px 0; }}
-            input, select, textarea {{ padding: 10px; margin: 5px 0; width: 100%; }}
-            button {{ background: #f57931; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; }}
-            a {{ color: #f57931; text-decoration: none; }}
+            body {{ 
+                background: #2c3e50; 
+                color: white; 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                padding: 20px; 
+                margin: 0;
+            }}
+            .container {{ 
+                max-width: 800px; 
+                margin: 0 auto; 
+                background: #34495e; 
+                padding: 30px; 
+                border-radius: 10px; 
+                box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            }}
+            .header {{ 
+                color: #f57931; 
+                text-align: center; 
+                margin-bottom: 30px; 
+                font-size: 2rem;
+            }}
+            .form-group {{ 
+                margin: 20px 0; 
+            }}
+            label {{ 
+                display: block; 
+                margin-bottom: 8px; 
+                font-weight: bold; 
+                color: #ecf0f1;
+            }}
+            input, select, textarea {{ 
+                width: 100%; 
+                padding: 12px; 
+                margin: 5px 0; 
+                border: 1px solid #7f8c8d; 
+                border-radius: 5px; 
+                background: #2c3e50; 
+                color: white; 
+                font-size: 14px;
+                box-sizing: border-box;
+            }}
+            input[type="file"] {{
+                background: #34495e;
+                border: 2px dashed #f57931;
+                padding: 20px;
+                text-align: center;
+                cursor: pointer;
+            }}
+            select[multiple] {{
+                height: 120px;
+            }}
+            button {{ 
+                background: #f57931; 
+                color: white; 
+                padding: 15px 30px; 
+                border: none; 
+                border-radius: 5px; 
+                cursor: pointer; 
+                font-size: 16px;
+                font-weight: bold;
+                width: 100%;
+                margin-top: 20px;
+            }}
+            button:hover {{
+                background: #e67e22;
+            }}
+            .nav-link {{ 
+                color: #f57931; 
+                text-decoration: none; 
+                display: inline-block;
+                margin-top: 20px;
+            }}
+            .nav-link:hover {{
+                color: #e67e22;
+            }}
+            .help-text {{
+                font-size: 12px;
+                color: #bdc3c7;
+                margin-top: 5px;
+            }}
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>📸 Upload Images</h1>
+            <h1 class="header">📸 Upload Images</h1>
             
             <form action="/admin/images/upload" method="POST" enctype="multipart/form-data">
                 <div class="form-group">
-                    <label>Select Images:</label>
-                    <input type="file" name="images[]" multiple accept="image/*" required>
+                    <label for="images">Select Images:</label>
+                    <input type="file" name="images[]" id="images" multiple accept="image/*" required>
+                    <div class="help-text">Select one or more image files (JPG, PNG, GIF)</div>
                 </div>
                 
                 <div class="form-group">
-                    <label>Title Prefix:</label>
-                    <input type="text" name="title_prefix" placeholder="e.g., Sunset">
+                    <label for="title_prefix">Title Prefix:</label>
+                    <input type="text" name="title_prefix" id="title_prefix" placeholder="e.g., Sunset, Wildlife, Portrait">
+                    <div class="help-text">Optional prefix for image titles (will be numbered automatically)</div>
                 </div>
                 
                 <div class="form-group">
-                    <label>Description:</label>
-                    <textarea name="description" rows="3" placeholder="Image description"></textarea>
+                    <label for="description">Description:</label>
+                    <textarea name="description" id="description" rows="3" placeholder="Describe the images or shoot details"></textarea>
+                    <div class="help-text">Optional description for all uploaded images</div>
                 </div>
                 
                 <div class="form-group">
-                    <label>Categories:</label>
-                    <select name="categories" multiple>
+                    <label for="categories">Categories:</label>
+                    <select name="categories" id="categories" multiple>
                         {category_options}
                     </select>
+                    <div class="help-text">Hold Ctrl/Cmd to select multiple categories</div>
                 </div>
                 
-                <button type="submit">Upload Images</button>
+                <button type="submit">📤 Upload Images</button>
             </form>
             
-            <p><a href="/admin/dashboard">← Back to Dashboard</a></p>
+            <a href="/admin/dashboard" class="nav-link">← Back to Dashboard</a>
         </div>
     </body>
     </html>
