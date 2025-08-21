@@ -13,7 +13,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from models import db, Image, Category, ImageCategory, FeaturedImage, BackgroundSetting, ContactMessage, Backup, Setting
-from utils import save_uploaded_image, extract_exif_data, format_shutter_speed, generate_slug, create_backup, restore_backup
+from utils import save_uploaded_image, extract_exif_data, format_shutter_speed, generate_slug, create_backup, restore_backup, allowed_file
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates/admin')
 
