@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 import os
 import json
 import logging
+from datetime import datetime, date
 from models import db, Image, Category, FeaturedImage, ContactMessage
 
 # Set up logging
@@ -243,8 +244,8 @@ def load_sample_data():
                     featured = FeaturedImage(
                         image_id=image.id,
                         story="This image was captured during a perfect summer evening at Lake Monona in Madison. I had been waiting for weeks for the perfect conditions - clear skies with just enough clouds to catch the colors of sunset. As the sun began to dip below the horizon, the entire sky erupted in vibrant oranges and purples, reflecting perfectly in the calm waters of the lake.",
-                        start_date='2025-08-01',
-                        end_date='2025-08-31'
+                        start_date=date(2025, 8, 1),
+                        end_date=date(2025, 8, 31)
                     )
                     db.session.add(featured)
                     sample_data_added = True
