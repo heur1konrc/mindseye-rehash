@@ -121,7 +121,7 @@ def admin_dashboard():
             
             <div class="stat">
                 <h3>🔗 Quick Links</h3>
-                <p><a href="/admin/upload">📸 Upload Images</a></p>
+                <p><a href="/admin/images/upload">📸 Upload Images</a></p>
                 <p><a href="/admin/images">🖼️ Manage Images</a></p>
                 <p><a href="/admin/categories">📁 Manage Categories</a></p>
                 <p><a href="/">🏠 Back to Website</a></p>
