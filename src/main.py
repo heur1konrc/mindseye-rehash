@@ -327,6 +327,38 @@ def serve_uploaded_file(filename):
     else:
         return send_from_directory('static/assets', filename)
 
+@app.route('/admin/emergency-delete-sunset')
+def emergency_delete_sunset():
+    """Emergency route to delete the stubborn sunset image"""
+    try:
+        from models import Image
+        
+        # Find and delete sunset image
+        sunset = Image.query.filter(Image.title.like('%Sunset%')).first()
+        if sunset:
+            filename = sunset.filename
+            db.session.delete(sunset)
+            db.session.commit()
+            
+            return f"""
+            <h1 style="color: green;">✅ Sunset Image Deleted!</h1>
+            <p>Deleted: {sunset.title} ({filename})</p>
+            <p><a href="/admin-gallery">← Back to Gallery</a></p>
+            """
+        else:
+            return f"""
+            <h1 style="color: orange;">⚠️ Sunset Image Not Found</h1>
+            <p>The sunset image is already deleted from the database.</p>
+            <p><a href="/admin-gallery">← Back to Gallery</a></p>
+            """
+            
+    except Exception as e:
+        return f"""
+        <h1 style="color: red;">❌ Delete Error</h1>
+        <p>Error: {str(e)}</p>
+        <p><a href="/admin-gallery">← Back to Gallery</a></p>
+        """
+
 @app.route('/admin-categories')
 def admin_categories():
     """Category management - view, add, edit, delete categories"""
