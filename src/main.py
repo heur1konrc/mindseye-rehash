@@ -331,18 +331,27 @@ def serve_uploaded_file(filename):
 def emergency_delete_sunset():
     """Emergency route to delete the stubborn sunset image"""
     try:
-        from models import Image
+        from models import Image, FeaturedImage
         
-        # Find and delete sunset image
+        # Find sunset image
         sunset = Image.query.filter(Image.title.like('%Sunset%')).first()
         if sunset:
             filename = sunset.filename
+            title = sunset.title
+            
+            # First, remove any featured image references
+            featured_refs = FeaturedImage.query.filter_by(image_id=sunset.id).all()
+            for ref in featured_refs:
+                db.session.delete(ref)
+            
+            # Then delete the main image
             db.session.delete(sunset)
             db.session.commit()
             
             return f"""
             <h1 style="color: green;">✅ Sunset Image Deleted!</h1>
-            <p>Deleted: {sunset.title} ({filename})</p>
+            <p>Deleted: {title} ({filename})</p>
+            <p>Removed {len(featured_refs)} featured image references</p>
             <p><a href="/admin-gallery">← Back to Gallery</a></p>
             """
         else:
