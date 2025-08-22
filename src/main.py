@@ -22,7 +22,7 @@ from models import db, init_db, import_legacy_data, Image
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = 'mindseye2025'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max total upload size
 
 # Use persistent volume for database in production
 if os.environ.get('RAILWAY_ENVIRONMENT') == 'production':
