@@ -322,6 +322,200 @@ def serve_uploaded_file(filename):
     else:
         return send_from_directory('static/assets', filename)
 
+@app.route('/admin-categories')
+def admin_categories():
+    """Category management - view, add, edit, delete categories"""
+    try:
+        # Import Category model
+        from models import Category
+        
+        # Get all categories
+        categories = Category.query.order_by(Category.display_order, Category.name).all()
+        
+        # Build category management HTML
+        category_list = ""
+        for category in categories:
+            image_count = len(category.images)
+            category_list += f"""
+            <div class="category-item" style="border: 1px solid #444; margin: 10px 0; padding: 15px; border-radius: 8px; background: #2a2a2a;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h4 style="color: {category.color_code}; margin: 0;">{category.name}</h4>
+                        <p style="color: #ccc; margin: 5px 0;">{category.description or 'No description'}</p>
+                        <p style="color: #888; font-size: 14px;">{image_count} images • Order: {category.display_order}</p>
+                    </div>
+                    <div>
+                        <button onclick="editCategory({category.id})" style="background: #4CAF50; color: white; border: none; padding: 8px 12px; margin: 2px; border-radius: 4px; cursor: pointer;">✏️ Edit</button>
+                        <button onclick="deleteCategory({category.id})" style="background: #f44336; color: white; border: none; padding: 8px 12px; margin: 2px; border-radius: 4px; cursor: pointer;">🗑️ Delete</button>
+                    </div>
+                </div>
+            </div>
+            """
+        
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Category Management - Mind's Eye Photography</title>
+            <style>
+                body {{ background: #1a1a1a; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }}
+                .header {{ text-align: center; margin-bottom: 30px; }}
+                .add-category {{ background: #f57931; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-bottom: 20px; }}
+                .add-category:hover {{ background: #e66a28; }}
+                .category-form {{ background: #2a2a2a; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: none; }}
+                .form-group {{ margin-bottom: 15px; }}
+                .form-group label {{ display: block; margin-bottom: 5px; color: #f57931; }}
+                .form-group input, .form-group textarea {{ width: 100%; padding: 8px; border: 1px solid #444; background: #333; color: #fff; border-radius: 4px; }}
+                .form-buttons {{ text-align: right; }}
+                .form-buttons button {{ padding: 8px 16px; margin-left: 10px; border: none; border-radius: 4px; cursor: pointer; }}
+                .save-btn {{ background: #4CAF50; color: white; }}
+                .cancel-btn {{ background: #666; color: white; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🗂️ Category Management</h1>
+                <p>Manage your photography categories</p>
+                <p><strong>Total Categories: {len(categories)}</strong></p>
+                
+                <a href="/admin-gallery" style="color: #f57931; text-decoration: none; margin: 0 15px;">📸 Gallery</a>
+                <a href="/admin-upload" style="color: #f57931; text-decoration: none; margin: 0 15px;">📤 Upload</a>
+                <a href="/admin/dashboard" style="color: #f57931; text-decoration: none; margin: 0 15px;">📊 Dashboard</a>
+            </div>
+            
+            <button class="add-category" onclick="showAddForm()">➕ Add New Category</button>
+            
+            <div id="addForm" class="category-form">
+                <h3>Add New Category</h3>
+                <form method="POST" action="/admin/add-category">
+                    <div class="form-group">
+                        <label>Category Name:</label>
+                        <input type="text" name="name" required placeholder="e.g., Landscapes, Portraits">
+                    </div>
+                    <div class="form-group">
+                        <label>Description:</label>
+                        <textarea name="description" placeholder="Optional description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Color Code:</label>
+                        <input type="color" name="color_code" value="#f57931">
+                    </div>
+                    <div class="form-group">
+                        <label>Display Order:</label>
+                        <input type="number" name="display_order" value="0" min="0">
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="cancel-btn" onclick="hideAddForm()">Cancel</button>
+                        <button type="submit" class="save-btn">💾 Save Category</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="categories-list">
+                {category_list}
+            </div>
+            
+            <script>
+                function showAddForm() {{
+                    document.getElementById('addForm').style.display = 'block';
+                }}
+                
+                function hideAddForm() {{
+                    document.getElementById('addForm').style.display = 'none';
+                }}
+                
+                function editCategory(categoryId) {{
+                    alert('Edit functionality coming soon! Category ID: ' + categoryId);
+                }}
+                
+                function deleteCategory(categoryId) {{
+                    if (confirm('Are you sure you want to delete this category?')) {{
+                        // Create form and submit
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '/admin/delete-category/' + categoryId;
+                        document.body.appendChild(form);
+                        form.submit();
+                    }}
+                }}
+            </script>
+        </body>
+        </html>
+        """
+        
+    except Exception as e:
+        return f"""
+        <h1 style="color: red;">❌ Category Management Error</h1>
+        <p>Error loading categories: {{str(e)}}</p>
+        <p><a href="/admin-gallery">Back to Gallery</a></p>
+        """
+
+@app.route('/admin/add-category', methods=['POST'])
+def add_category():
+    """Add a new category"""
+    try:
+        from models import Category
+        
+        name = request.form.get('name')
+        description = request.form.get('description')
+        color_code = request.form.get('color_code', '#f57931')
+        display_order = int(request.form.get('display_order', 0))
+        
+        # Create slug from name
+        slug = name.lower().replace(' ', '-').replace('&', 'and')
+        
+        # Create new category
+        category = Category(
+            name=name,
+            slug=slug,
+            description=description,
+            color_code=color_code,
+            display_order=display_order
+        )
+        
+        db.session.add(category)
+        db.session.commit()
+        
+        return f"""
+        <h1 style="color: green;">✅ Category Added Successfully!</h1>
+        <p>Added: {{name}}</p>
+        <p><a href="/admin-categories">← Back to Categories</a></p>
+        """
+        
+    except Exception as e:
+        return f"""
+        <h1 style="color: red;">❌ Add Category Error</h1>
+        <p>Error adding category: {{str(e)}}</p>
+        <p><a href="/admin-categories">← Back to Categories</a></p>
+        """
+
+@app.route('/admin/delete-category/<int:category_id>', methods=['POST'])
+def delete_category(category_id):
+    """Delete a category"""
+    try:
+        from models import Category
+        
+        # Get the category
+        category = Category.query.get_or_404(category_id)
+        category_name = category.name
+        
+        # Delete the category
+        db.session.delete(category)
+        db.session.commit()
+        
+        return f"""
+        <h1 style="color: green;">✅ Category Deleted Successfully!</h1>
+        <p>Deleted: {{category_name}}</p>
+        <p><a href="/admin-categories">← Back to Categories</a></p>
+        """
+        
+    except Exception as e:
+        return f"""
+        <h1 style="color: red;">❌ Delete Category Error</h1>
+        <p>Error deleting category: {{str(e)}}</p>
+        <p><a href="/admin-categories">← Back to Categories</a></p>
+        """
+
 @app.route('/admin/delete-image/<int:image_id>', methods=['POST'])
 def delete_image(image_id):
     """Delete an image from database and file system"""
