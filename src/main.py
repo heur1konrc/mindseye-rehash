@@ -17,6 +17,7 @@ if current_dir not in sys.path:
     sys.path.append(current_dir)
 
 # Now we can import our modules
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
 from models import db, init_db, import_legacy_data, Image
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
@@ -215,7 +216,8 @@ def admin_gallery():
         # Build image grid HTML
         image_grid = ""
         for image in images:
-            image_url = f"/static/assets/{image.filename}"
+            # Use the new uploads route for serving files
+            image_url = f"/uploads/{image.filename}"
             image_grid += f"""
             <div class="image-card" data-image-id="{image.id}">
                 <img src="{image_url}" alt="{image.title}" class="thumbnail">
@@ -306,6 +308,16 @@ def admin_gallery():
         <p>Error loading gallery: {str(e)}</p>
         <p><a href="/admin-upload">Back to Upload</a></p>
         """
+
+@app.route('/uploads/<filename>')
+def serve_uploaded_file(filename):
+    """Serve uploaded files from the volume"""
+    if os.path.exists('/mnt/data'):
+        # Production: serve from volume
+        return send_from_directory('/mnt/data', filename)
+    else:
+        # Development: serve from local assets
+        return send_from_directory('static/assets', filename)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
