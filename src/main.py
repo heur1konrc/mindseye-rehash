@@ -199,6 +199,108 @@ def admin_upload():
     </html>
     """
 
+@app.route('/admin-gallery')
+def admin_gallery():
+    """Visual gallery management - see all images with thumbnails"""
+    try:
+        # Get all images from database
+        images = Image.query.order_by(Image.date_uploaded.desc()).all()
+        
+        # Build image grid HTML
+        image_grid = ""
+        for image in images:
+            image_url = f"/static/assets/{image.filename}"
+            image_grid += f"""
+            <div class="image-card" data-image-id="{image.id}">
+                <img src="{image_url}" alt="{image.title}" class="thumbnail">
+                <div class="image-info">
+                    <h4>{image.title}</h4>
+                    <p class="filename">{image.filename}</p>
+                    <p class="description">{image.description or 'No description'}</p>
+                    <p class="upload-date">Uploaded: {image.date_uploaded.strftime('%Y-%m-%d %H:%M')}</p>
+                    <div class="image-actions">
+                        <button onclick="editImage({image.id})" class="edit-btn">✏️ Edit</button>
+                        <button onclick="deleteImage({image.id})" class="delete-btn">🗑️ Delete</button>
+                        <button onclick="categorizeImage({image.id})" class="category-btn">📁 Categorize</button>
+                    </div>
+                </div>
+            </div>
+            """
+        
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>📸 Visual Gallery Management</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; background: #2c3e50; color: white; margin: 0; padding: 20px; }}
+                .header {{ text-align: center; margin-bottom: 30px; }}
+                .header h1 {{ color: #f57931; margin: 0; }}
+                .stats {{ background: #34495e; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }}
+                .image-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }}
+                .image-card {{ background: #34495e; border-radius: 8px; padding: 15px; border: 2px solid transparent; transition: all 0.3s; }}
+                .image-card:hover {{ border-color: #f57931; transform: translateY(-2px); }}
+                .thumbnail {{ width: 100%; height: 200px; object-fit: cover; border-radius: 5px; margin-bottom: 10px; }}
+                .image-info h4 {{ color: #f57931; margin: 0 0 5px 0; }}
+                .filename {{ font-size: 12px; color: #bdc3c7; margin: 5px 0; word-break: break-all; }}
+                .description {{ margin: 10px 0; }}
+                .upload-date {{ font-size: 12px; color: #95a5a6; margin: 5px 0; }}
+                .image-actions {{ margin-top: 15px; }}
+                .image-actions button {{ padding: 8px 12px; margin: 2px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }}
+                .edit-btn {{ background: #3498db; color: white; }}
+                .delete-btn {{ background: #e74c3c; color: white; }}
+                .category-btn {{ background: #f57931; color: white; }}
+                .nav-links {{ text-align: center; margin: 20px 0; }}
+                .nav-links a {{ color: #f57931; text-decoration: none; margin: 0 15px; }}
+                .nav-links a:hover {{ text-decoration: underline; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>📸 Visual Gallery Management</h1>
+                <p>See and manage all your uploaded images</p>
+            </div>
+            
+            <div class="stats">
+                <strong>Total Images: {len(images)}</strong>
+            </div>
+            
+            <div class="nav-links">
+                <a href="/admin-upload">📤 Upload More Images</a>
+                <a href="/admin/dashboard">📊 Back to Dashboard</a>
+                <a href="/admin-categories">📁 Manage Categories</a>
+            </div>
+            
+            <div class="image-grid">
+                {image_grid if images else '<p style="text-align: center; grid-column: 1/-1;">No images uploaded yet. <a href="/admin-upload">Upload some images!</a></p>'}
+            </div>
+            
+            <script>
+                function editImage(imageId) {{
+                    alert('Edit functionality coming soon! Image ID: ' + imageId);
+                }}
+                
+                function deleteImage(imageId) {{
+                    if (confirm('Are you sure you want to delete this image?')) {{
+                        alert('Delete functionality coming soon! Image ID: ' + imageId);
+                    }}
+                }}
+                
+                function categorizeImage(imageId) {{
+                    alert('Categorize functionality coming soon! Image ID: ' + imageId);
+                }}
+            </script>
+        </body>
+        </html>
+        """
+        
+    except Exception as e:
+        return f"""
+        <h1 style="color: red;">❌ Gallery Error</h1>
+        <p>Error loading gallery: {str(e)}</p>
+        <p><a href="/admin-upload">Back to Upload</a></p>
+        """
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
 
