@@ -121,8 +121,14 @@ def admin_upload():
                         # Generate unique filename
                         filename = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
                         
-                        # Save file to correct path: src/static/assets
-                        upload_path = os.path.join('src', 'static', 'assets', filename)
+                        # Save file to Railway volume in production, local path in development
+                        if os.path.exists('/mnt/data'):
+                            # Production: Use Railway volume
+                            upload_path = os.path.join('/mnt/data', filename)
+                        else:
+                            # Development: Use local path
+                            upload_path = os.path.join('src', 'static', 'assets', filename)
+                        
                         os.makedirs(os.path.dirname(upload_path), exist_ok=True)
                         file.save(upload_path)
                         
