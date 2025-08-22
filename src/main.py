@@ -121,8 +121,8 @@ def admin_upload():
                         # Generate unique filename
                         filename = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
                         
-                        # Save file
-                        upload_path = os.path.join(app.static_folder, 'assets', filename)
+                        # Save file to correct path: src/static/assets
+                        upload_path = os.path.join('src', 'static', 'assets', filename)
                         os.makedirs(os.path.dirname(upload_path), exist_ok=True)
                         file.save(upload_path)
                         
