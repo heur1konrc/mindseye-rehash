@@ -290,7 +290,12 @@ def admin_gallery():
                 
                 function deleteImage(imageId) {{
                     if (confirm('Are you sure you want to delete this image?')) {{
-                        alert('Delete functionality coming soon! Image ID: ' + imageId);
+                        // Create form and submit to delete route
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '/admin/delete-image/' + imageId;
+                        document.body.appendChild(form);
+                        form.submit();
                     }}
                 }}
                 
@@ -446,7 +451,7 @@ def admin_categories():
     except Exception as e:
         return f"""
         <h1 style="color: red;">❌ Category Management Error</h1>
-        <p>Error loading categories: {{str(e)}}</p>
+        <p>Error loading categories: {str(e)}</p>
         <p><a href="/admin-gallery">Back to Gallery</a></p>
         """
 
@@ -478,14 +483,14 @@ def add_category():
         
         return f"""
         <h1 style="color: green;">✅ Category Added Successfully!</h1>
-        <p>Added: {{name}}</p>
+        <p>Added: {name}</p>
         <p><a href="/admin-categories">← Back to Categories</a></p>
         """
         
     except Exception as e:
         return f"""
         <h1 style="color: red;">❌ Add Category Error</h1>
-        <p>Error adding category: {{str(e)}}</p>
+        <p>Error adding category: {str(e)}</p>
         <p><a href="/admin-categories">← Back to Categories</a></p>
         """
 
@@ -505,14 +510,14 @@ def delete_category(category_id):
         
         return f"""
         <h1 style="color: green;">✅ Category Deleted Successfully!</h1>
-        <p>Deleted: {{category_name}}</p>
+        <p>Deleted: {category_name}</p>
         <p><a href="/admin-categories">← Back to Categories</a></p>
         """
         
     except Exception as e:
         return f"""
         <h1 style="color: red;">❌ Delete Category Error</h1>
-        <p>Error deleting category: {{str(e)}}</p>
+        <p>Error deleting category: {str(e)}</p>
         <p><a href="/admin-categories">← Back to Categories</a></p>
         """
 
