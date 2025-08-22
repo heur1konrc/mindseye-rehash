@@ -311,12 +311,15 @@ def admin_gallery():
 
 @app.route('/uploads/<filename>')
 def serve_uploaded_file(filename):
-    """Serve uploaded files from the volume"""
-    if os.path.exists('/mnt/data'):
-        # Production: serve from volume
+    """Serve uploaded files from volume or static assets"""
+    # First try volume (for new uploads)
+    if os.path.exists('/mnt/data') and os.path.exists(f'/mnt/data/{filename}'):
         return send_from_directory('/mnt/data', filename)
+    # Fall back to static assets (for original images)
+    elif os.path.exists(f'src/static/assets/{filename}'):
+        return send_from_directory('src/static/assets', filename)
+    # Development fallback
     else:
-        # Development: serve from local assets
         return send_from_directory('static/assets', filename)
 
 if __name__ == '__main__':
