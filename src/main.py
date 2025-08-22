@@ -322,6 +322,38 @@ def serve_uploaded_file(filename):
     else:
         return send_from_directory('static/assets', filename)
 
+@app.route('/admin/delete-image/<int:image_id>', methods=['POST'])
+def delete_image(image_id):
+    """Delete an image from database and file system"""
+    try:
+        # Get the image record
+        image = Image.query.get_or_404(image_id)
+        filename = image.filename
+        
+        # Delete from database
+        db.session.delete(image)
+        db.session.commit()
+        
+        # Delete file from volume if it exists
+        if os.path.exists('/mnt/data') and os.path.exists(f'/mnt/data/{filename}'):
+            os.remove(f'/mnt/data/{filename}')
+        # Delete from static assets if it exists
+        elif os.path.exists(f'src/static/assets/{filename}'):
+            os.remove(f'src/static/assets/{filename}')
+        
+        return f"""
+        <h1 style="color: green;">✅ Image Deleted Successfully!</h1>
+        <p>Deleted: {filename}</p>
+        <p><a href="/admin-gallery">← Back to Gallery</a></p>
+        """
+        
+    except Exception as e:
+        return f"""
+        <h1 style="color: red;">❌ Delete Error</h1>
+        <p>Error deleting image: {str(e)}</p>
+        <p><a href="/admin-gallery">← Back to Gallery</a></p>
+        """
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
 
